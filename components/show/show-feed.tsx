@@ -7,14 +7,14 @@ import { clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Image from 'next/image'
 import { 
   Users, 
   MessageCircle, 
   Clock, 
   LogOut, 
   ChevronLeft, 
-  ChevronRight,
-  Sparkles
+  ChevronRight
 } from 'lucide-react'
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
@@ -104,7 +104,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
 
   // Countdown timer
   useEffect(() => {
-    if (event.status !== 'active' || !event.started_at) {
+    if (event.status !== 'live' || !event.started_at) {
       setTimeRemaining('Waiting to start')
       return
     }
@@ -266,8 +266,14 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
           {users.length === 0 ? (
             // Empty state
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Sparkles className="w-10 h-10 text-primary" />
+              <div className="w-20 h-20 rounded-full bg-primary/10 p-3 flex items-center justify-center mb-4 overflow-hidden">
+                <Image 
+                  src="/logo.png" 
+                  alt="LinkedUp" 
+                  width={64}
+                  height={64}
+                  className="object-contain"
+                />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">You&apos;re the first one here!</h2>
               <p className="text-muted-foreground max-w-xs">

@@ -103,7 +103,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
   // Countdown timer
   useEffect(() => {
-    if (!event || event.status !== 'active' || !event.started_at) return
+    if (!event || event.status !== 'live' || !event.started_at) return
 
     function updateTimer() {
       if (!event?.started_at) return
@@ -131,18 +131,18 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     return () => clearInterval(interval)
   }, [event])
 
-  async function startEvent() {
+async function startEvent() {
     if (!event) return
     setIsUpdating(true)
 
     const supabase = createClient()
     const { error } = await supabase
       .from('events')
-      .update({ status: 'active', started_at: new Date().toISOString() })
+      .update({ status: 'live', started_at: new Date().toISOString() })
       .eq('id', event.id)
 
     if (!error) {
-      setEvent({ ...event, status: 'active', started_at: new Date().toISOString() })
+      setEvent({ ...event, status: 'live', started_at: new Date().toISOString() })
     }
     setIsUpdating(false)
   }
@@ -215,7 +215,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
             <h1 className="text-xl font-bold text-foreground truncate">{event.show_name}</h1>
             <div className="flex items-center gap-2">
               <span className="font-mono text-primary text-sm">{event.event_code}</span>
-              <Badge variant={event.status === 'active' ? 'default' : 'secondary'}>
+              <Badge variant={event.status === 'live' ? 'default' : 'secondary'}>
                 {event.status}
               </Badge>
             </div>
@@ -268,7 +268,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         </Card>
 
         {/* Status & Timer */}
-        {event.status === 'active' && timeRemaining && (
+        {event.status === 'live' && timeRemaining && (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">Time Remaining</p>
@@ -308,7 +308,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          {event.status === 'pending' && (
+{event.status === 'archived' && (
             <Button 
               className="w-full" 
               size="lg"
@@ -323,7 +323,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
               Start Event
             </Button>
           )}
-          {event.status === 'active' && (
+          {event.status === 'live' && (
             <Button 
               variant="destructive" 
               className="w-full" 

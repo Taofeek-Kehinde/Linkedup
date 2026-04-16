@@ -57,8 +57,8 @@ export default function AdminDashboard() {
     )
   }
 
-  const activeEvents = events.filter(e => e.status === 'active')
-  const pendingEvents = events.filter(e => e.status === 'pending')
+  const liveEvents = events.filter(e => e.status === 'live')
+  const archivedEvents = events.filter(e => e.status === 'archived')
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{activeEvents.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{liveEvents.length}</p>
                   <p className="text-xs text-muted-foreground">Active Events</p>
                 </div>
               </div>
@@ -115,23 +115,23 @@ export default function AdminDashboard() {
         </Link>
 
         {/* Active Events */}
-        {activeEvents.length > 0 && (
+{liveEvents.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Active Events
+              Live Events
             </h2>
-            {activeEvents.map(event => (
+            {liveEvents.map(event => (
               <EventCard key={event.id} event={event} />
             ))}
           </section>
         )}
 
         {/* Pending Events */}
-        {pendingEvents.length > 0 && (
+{archivedEvents.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">Ready to Start</h2>
-            {pendingEvents.map(event => (
+            <h2 className="text-lg font-semibold text-foreground">Archived Events</h2>
+            {archivedEvents.map(event => (
               <EventCard key={event.id} event={event} />
             ))}
           </section>
@@ -156,10 +156,10 @@ export default function AdminDashboard() {
 
 function EventCard({ event }: { event: Event }) {
   const statusColors = {
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    active: 'bg-green-500/20 text-green-400',
-    ended: 'bg-muted text-muted-foreground',
-  }
+    live: 'bg-green-500/20 text-green-400',
+    ended: 'bg-orange-500/20 text-orange-400',
+    archived: 'bg-muted text-muted-foreground',
+  } as const
 
   return (
     <Link href={`/admin/event/${event.id}`}>

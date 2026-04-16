@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
-import { Zap, ArrowRight, ArrowLeft, RefreshCw, UserCheck } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowRight, ArrowLeft, RefreshCw, UserCheck } from 'lucide-react'
 import { getLocalSession, setLocalSession } from '@/lib/utils/session'
 import { generateUsername } from '@/lib/utils/generate-username'
 import { generateVibeKey } from '@/lib/utils/generate-vibe-key'
@@ -221,8 +222,14 @@ export function JoinFlow() {
         <div className="w-full max-w-md space-y-6">
           {/* Logo */}
           <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30">
-              <Zap className="w-8 h-8 text-primary" />
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 overflow-hidden p-2">
+              <Image 
+                src="/logo.png" 
+                alt="LinkedUp" 
+                width={48}
+                height={48}
+                className="object-contain"
+              />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Join Event</h1>
           </div>

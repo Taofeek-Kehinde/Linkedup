@@ -59,7 +59,7 @@ export default function AdminHostEventPage() {
         show_name: showName.trim(),
         location: location.trim() || null,
         duration_hours: parseInt(durationHours),
-        status: 'pending',
+        status: 'archived',
         host_id: user.id,
       })
       .select()
