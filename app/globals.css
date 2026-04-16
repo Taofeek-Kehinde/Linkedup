@@ -127,3 +127,38 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes bg-zoom-fade {
+    0% { 
+      opacity: 0.25; 
+      transform: scale(1.05);
+    }
+    20% { 
+      opacity: 0.25; 
+    }
+    25% { 
+      opacity: 0;
+    }
+    75% { 
+      opacity: 0;
+    }
+    100% { 
+      opacity: 0.25; 
+      transform: scale(1.1);
+    }
+  }
+
+  .hero-bg-1 {
+    background-image: url('/bg1.png');
+    animation: bg-zoom-fade 9s infinite;
+  }
+  .hero-bg-2 {
+    background-image: url('/bg2.png');
+    animation: bg-zoom-fade 9s infinite 3s;
+  }
+  .hero-bg-3 {
+    background-image: url('/bg3.png');
+    animation: bg-zoom-fade 9s infinite 6s;
+  }
+}
