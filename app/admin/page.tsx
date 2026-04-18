@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -134,9 +135,8 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>
-                    <Input
+                    <PasswordInput
                       id="login-password"
-                      type="password"
                       placeholder="Enter your password"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
@@ -174,9 +174,8 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input
+                    <PasswordInput
                       id="signup-password"
-                      type="password"
                       placeholder="Create a password"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
@@ -186,9 +185,8 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-confirm">Confirm Password</Label>
-                    <Input
+                    <PasswordInput
                       id="signup-confirm"
-                      type="password"
                       placeholder="Confirm your password"
                       value={signupConfirm}
                       onChange={(e) => setSignupConfirm(e.target.value)}
