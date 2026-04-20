@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Sparkles, MapPin, Clock, Check } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Clock, Check, Plus, Edit3, Trash2, CalendarDays } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -23,8 +23,11 @@ export default function CreateEventPage() {
   
   // Form state
   const [showName, setShowName] = useState('')
-  const [location, setLocation] = useState('')
+  const [locations, setLocations] = useState<string[]>([])
+  const [newLocation, setNewLocation] = useState('')
+  const [scheduledStartAt, setScheduledStartAt] = useState<Date | null>(null)
   const [durationHours, setDurationHours] = useState('6')
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -40,6 +43,29 @@ export default function CreateEventPage() {
     checkAuth()
   }, [router])
 
+  const addLocation = () => {
+    if (newLocation.trim()) {
+      setLocations([...locations, newLocation.trim()])
+      setNewLocation('')
+    }
+  }
+
+  const updateLocation = (index: number, value: string) => {
+    const newLocs = [...locations]
+    newLocs[index] = value
+    setLocations(newLocs)
+  }
+
+  const deleteLocation = (index: number) => {
+    setLocations(locations.filter((_, i) => i !== index))
+    if (editingIndex === index) setEditingIndex(null)
+  }
+
+  const startEditing = (index: number) => {
+    setEditingIndex(index)
+    // Optional: prefill if needed
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -50,15 +76,18 @@ export default function CreateEventPage() {
     const supabase = createClient()
     
     // Generate unique event code
-    const eventCode = generateEventCode(location || 'EVENT')
+    const eventCode = generateEventCode(locations[0] || 'EVENT')
+
+    const scheduledStartIso = scheduledStartAt ? scheduledStartAt.toISOString() : null
 
     const { data, error } = await supabase
       .from('events')
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
-        location: location.trim() || null,
+        locations: locations,
         duration_hours: parseInt(durationHours),
+        scheduled_start_at: scheduledStartIso,
         status: 'live',
         host_id: user.id,
       })
@@ -125,19 +154,92 @@ export default function CreateEventPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="flex items-center gap-2">
+                <Label className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Location
+                  Locations
+                </Label>
+                <div className="space-y-2">
+                  {locations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No locations added</p>
+                  ) : (
+                    locations.map((loc, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                        {editingIndex === index ? (
+                          <Input
+                            value={loc}
+                            onChange={(e) => updateLocation(index, e.target.value)}
+                            onBlur={() => setEditingIndex(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                setEditingIndex(null)
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1"
+                          />
+                        ) : (
+                          <span className="flex-1">{loc}</span>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEditing(index)}
+                          className="h-6 w-6"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteLocation(index)}
+                          className="h-6 w-6"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                  <div className="flex gap-1">
+                    <Input
+                      placeholder="e.g., San Francisco, CA"
+                      value={newLocation}
+                      onChange={(e) => setNewLocation(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') addLocation()
+                      }}
+                      className="flex-1 bg-input"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      onClick={addLocation}
+                      disabled={!newLocation.trim()}
+                      className="h-10 w-10"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Optional. Helps users filter who they see.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  Scheduled start time
                 </Label>
                 <Input
-                  id="location"
-                  placeholder="e.g., San Francisco, CA"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  type="datetime-local"
+                  value={scheduledStartAt ? scheduledStartAt.toISOString().slice(0, 16) : ''}
+                  onChange={(e) => setScheduledStartAt(e.target.value ? new Date(e.target.value) : null)}
                   className="bg-input"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional. Helps users filter who they see.
+                  Optional. When the event is scheduled to start.
                 </p>
               </div>
 

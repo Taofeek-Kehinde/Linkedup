@@ -23,7 +23,9 @@ export default function AdminHostEventPage() {
   
   // Form state
   const [showName, setShowName] = useState('')
-  const [location, setLocation] = useState('')
+  const [locations, setLocations] = useState<string[]>([])
+  const [newLocation, setNewLocation] = useState('')
+  const [scheduledStartAt, setScheduledStartAt] = useState('')
   const [durationHours, setDurationHours] = useState('6')
 
   useEffect(() => {
@@ -50,14 +52,16 @@ export default function AdminHostEventPage() {
     const supabase = createClient()
     
     // Generate unique event code
-    const eventCode = generateEventCode(location || 'EVENT')
+    const eventCode = generateEventCode(locations[0] || showName.trim() || 'EVENT')
 
     const { data, error } = await supabase
       .from('events')
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
-        location: location.trim() || null,
+        locations: locations.length > 0 ? locations : null,
+        location: locations[0] || null,
+        scheduled_start_at: scheduledStartAt || null,
         duration_hours: parseInt(durationHours),
         status: 'archived',
         host_id: user.id,
@@ -125,22 +129,82 @@ export default function AdminHostEventPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="flex items-center gap-2">
+                <Label className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Location
+                  Locations
                 </Label>
-                <Input
-                  id="location"
-                  placeholder="e.g., San Francisco, CA"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="bg-input"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="new-location"
+                    placeholder="Add location (e.g., San Francisco)"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newLocation.trim()) {
+                        e.preventDefault()
+                        setLocations([...locations, newLocation.trim()])
+                        setNewLocation('')
+                      }
+                    }}
+                    className="flex-1 bg-input"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (newLocation.trim()) {
+                        setLocations([...locations, newLocation.trim()])
+                        setNewLocation('')
+                      }
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
+                {locations.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {locations.map((loc, index) => (
+                      <Badge 
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        {loc}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0"
+                          onClick={() => setLocations(locations.filter((_, i) => i !== index))}
+                        >
+                          ×
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  Optional. Helps users filter who they see.
+                  Optional. Helps users filter who they see. Click + to add, × to remove.
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="scheduled-start" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Scheduled Start Time
+                </Label>
+                <Input
+                  id="scheduled-start"
+                  type="datetime-local"
+                  value={scheduledStartAt}
+                  onChange={(e) => setScheduledStartAt(e.target.value)}
+                  className="bg-input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional. Event will auto-start at this time.
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="duration" className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />

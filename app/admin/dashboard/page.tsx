@@ -179,10 +179,10 @@ function EventCard({ event }: { event: Event }) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {event.location && (
+{(event.locations && event.locations.length > 0) && (
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
-                {event.location}
+                {event.locations.join(', ')}
               </span>
             )}
             <span className="flex items-center gap-1">

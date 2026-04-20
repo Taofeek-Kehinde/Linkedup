@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { 
   ArrowLeft, 
   Play, 
@@ -18,11 +20,18 @@ import {
   MapPin,
   QrCode as QrCodeIcon,
   Share2,
-  RefreshCw
+  RefreshCw,
+  Plus, 
+  Edit3, 
+  Trash2,
+  CalendarDays,
+  Save
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Event, EventUser } from '@/lib/types'
+import { useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
+import { Download } from 'lucide-react'
 
 export default function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -33,6 +42,32 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   const [isUpdating, setIsUpdating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editShowName, setEditShowName] = useState('')
+  const [editLocations, setEditLocations] = useState<string[]>([])
+  const [editNewLocation, setEditNewLocation] = useState('')
+  const [editScheduledStartAt, setEditScheduledStartAt] = useState<Date | null>(null)
+  const [editDurationHours, setEditDurationHours] = useState('6')
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const qrRef = useRef<HTMLCanvasElement>(null)
+
+  const downloadQR = () => {
+    if (qrRef.current) {
+      const canvas = qrRef.current
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `LinkedUp-${event?.event_code || 'QR'}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }
+      }, 'image/png')
+    }
+  }
 
   useEffect(() => {
     async function loadEvent() {
@@ -46,28 +81,32 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       }
 
       // Load event
-      const { data: event } = await supabase
+      const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('id', id)
         .eq('host_id', user.id)
         .single()
 
-      if (!event) {
+      if (!eventData) {
         router.push('/admin/dashboard')
         return
       }
 
-      setEvent(event)
+      setEvent(eventData)
+      setEditShowName(eventData.show_name)
+      setEditLocations(eventData.locations || [])
+      setEditScheduledStartAt(eventData.scheduled_start_at ? new Date(eventData.scheduled_start_at) : null)
+      setEditDurationHours(eventData.duration_hours.toString())
 
       // Load users
-      const { data: users } = await supabase
+      const { data: usersData } = await supabase
         .from('event_users')
         .select('*')
         .eq('event_id', id)
         .order('created_at', { ascending: false })
 
-      setUsers(users || [])
+      setUsers(usersData || [])
       setIsLoading(false)
     }
 
@@ -85,7 +124,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         'postgres_changes',
         { event: '*', schema: 'public', table: 'event_users', filter: `event_id=eq.${id}` },
         async () => {
-          // Refresh users list
           const { data } = await supabase
             .from('event_users')
             .select('*')
@@ -131,18 +169,77 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     return () => clearInterval(interval)
   }, [event])
 
+  const addEditLocation = () => {
+    if (editNewLocation.trim()) {
+      setEditLocations([...editLocations, editNewLocation.trim()])
+      setEditNewLocation('')
+    }
+  }
+
+  const updateEditLocation = (index: number, value: string) => {
+    const newLocs = [...editLocations]
+    newLocs[index] = value
+    setEditLocations(newLocs)
+  }
+
+  const deleteEditLocation = (index: number) => {
+    setEditLocations(editLocations.filter((_, i) => i !== index))
+    if (editingIndex === index) setEditingIndex(null)
+  }
+
+  const startEditEditing = (index: number) => {
+    setEditingIndex(index)
+  }
+
+  async function saveEdit() {
+    if (!event) return
+    setIsUpdating(true)
+
+    const supabase = createClient()
+    const scheduledStartIso = editScheduledStartAt ? editScheduledStartAt.toISOString() : null
+
+    const { error } = await supabase
+      .from('events')
+      .update({ 
+        show_name: editShowName.trim(),
+        locations: editLocations,
+        scheduled_start_at: scheduledStartIso,
+        duration_hours: parseInt(editDurationHours)
+      })
+      .eq('id', event.id)
+
+    if (!error) {
+      setEvent({ 
+        ...event, 
+        show_name: editShowName,
+        locations: editLocations,
+        scheduled_start_at: scheduledStartIso,
+        duration_hours: parseInt(editDurationHours)
+      })
+      setIsEditing(false)
+    }
+    setIsUpdating(false)
+  }
+
 async function startEvent() {
     if (!event) return
     setIsUpdating(true)
 
     const supabase = createClient()
-    const { error } = await supabase
+    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString() // 6 hours from now
+    const { data, error } = await supabase
       .from('events')
-      .update({ status: 'live', started_at: new Date().toISOString() })
+      .update({ 
+        status: 'live', 
+        started_at: new Date().toISOString(),
+        ends_at: endTime 
+      })
       .eq('id', event.id)
+      .select()
+      .single()
 
-    if (!error) {
-      setEvent({ ...event, status: 'live', started_at: new Date().toISOString() })
+    if (!error && data) {
+      setEvent(data)
     }
     setIsUpdating(false)
   }
@@ -152,13 +249,15 @@ async function startEvent() {
     setIsUpdating(true)
 
     const supabase = createClient()
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('events')
       .update({ status: 'ended' })
       .eq('id', event.id)
+      .select()
+      .single()
 
-    if (!error) {
-      setEvent({ ...event, status: 'ended' })
+    if (!error && data) {
+      setEvent(data)
     }
     setIsUpdating(false)
   }
@@ -181,9 +280,7 @@ async function startEvent() {
           text: `Join ${event.show_name} on LinkedUp!`,
           url,
         })
-      } catch {
-        // User cancelled or share failed
-      }
+      } catch {}
     } else {
       navigator.clipboard.writeText(url)
       setCopied(true)
@@ -211,8 +308,16 @@ async function startEvent() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground truncate">{event.show_name}</h1>
+          <div className="flex-1 space-y-1">
+            {isEditing ? (
+              <Input
+                value={editShowName}
+                onChange={(e) => setEditShowName(e.target.value)}
+                className="text-xl font-bold h-10"
+              />
+            ) : (
+              <h1 className="text-xl font-bold text-foreground truncate">{event.show_name}</h1>
+            )}
             <div className="flex items-center gap-2">
               <span className="font-mono text-primary text-sm">{event.event_code}</span>
               <Badge variant={event.status === 'live' ? 'default' : 'secondary'}>
@@ -220,6 +325,22 @@ async function startEvent() {
               </Badge>
             </div>
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => {
+              setIsEditing(!isEditing)
+              if (!isEditing) {
+                // Load current values for edit
+                setEditShowName(event.show_name)
+                setEditLocations(event.locations || [])
+                setEditScheduledStartAt(event.scheduled_start_at ? new Date(event.scheduled_start_at) : null)
+                setEditDurationHours(event.duration_hours.toString())
+              }
+            }}
+          >
+            {isEditing ? <Save className="h-5 w-5" /> : <Edit3 className="h-5 w-5" />}
+          </Button>
         </div>
 
         {/* QR Code Card */}
@@ -236,6 +357,7 @@ async function startEvent() {
           <CardContent className="flex flex-col items-center gap-4">
             <div className="bg-white p-4 rounded-xl">
               <QRCodeCanvas
+                ref={qrRef}
                 value={joinUrl}
                 size={200}
                 level="H"
@@ -243,29 +365,41 @@ async function startEvent() {
               />
             </div>
             <div className="flex gap-2 w-full">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={copyCode}
-              >
-                {copied ? (
-                  <Check className="mr-2 h-4 w-4" />
-                ) : (
-                  <Copy className="mr-2 h-4 w-4" />
-                )}
-                {copied ? 'Copied!' : 'Copy Code'}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={shareEvent}
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onClick={copyCode}
+          >
+            {copied ? (
+              <Check className="mr-2 h-4 w-4" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            {copied ? 'Copied!' : 'Copy Code'}
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onClick={downloadQR}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download QR
+          </Button>
+        </div>
+
+        {isEditing && (
+          <div className="flex gap-2 pt-4">
+            <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={isUpdating} className="flex-1">
+              {isUpdating ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
+              Save
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
 
         {/* Status & Timer */}
         {event.status === 'live' && timeRemaining && (
@@ -277,52 +411,135 @@ async function startEvent() {
           </Card>
         )}
 
-        {/* Event Info */}
+        {/* Edit Form / Info Card */}
         <Card className="border-border/50 bg-card/50">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4" />
-                Participants
-              </span>
-              <span className="font-semibold text-foreground">{users.length}</span>
-            </div>
-            {event.location && (
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  Location
-                </span>
-                <span className="font-semibold text-foreground">{event.location}</span>
-              </div>
+          <CardContent className="p-4 space-y-4">
+            {isEditing ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Locations</Label>
+                  <div className="space-y-2">
+                    {editLocations.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No locations</p>
+                    ) : (
+                      editLocations.map((loc, index) => (
+                        <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                          {editingIndex === index ? (
+                            <Input
+                              value={loc}
+                              onChange={(e) => updateEditLocation(index, e.target.value)}
+                              onBlur={() => setEditingIndex(null)}
+                              onKeyDown={(e) => e.key === 'Enter' && setEditingIndex(null)}
+                              autoFocus
+                              className="flex-1"
+                            />
+                          ) : (
+                            <span className="flex-1">{loc}</span>
+                          )}
+                          <Button type="button" variant="ghost" size="icon" onClick={() => startEditEditing(index)} className="h-6 w-6">
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => deleteEditLocation(index)} className="h-6 w-6">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                    <div className="flex gap-1">
+                      <Input
+                        placeholder="Add location"
+                        value={editNewLocation}
+                        onChange={(e) => setEditNewLocation(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addEditLocation()}
+                        className="flex-1 bg-input"
+                      />
+                      <Button type="button" size="icon" onClick={addEditLocation} disabled={!editNewLocation.trim()} className="h-10 w-10">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Optional. Helps users filter who they see.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Scheduled start time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={editScheduledStartAt ? editScheduledStartAt.toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setEditScheduledStartAt(e.target.value ? new Date(e.target.value) : null)}
+                    className="bg-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Input
+                    type="number"
+                    value={editDurationHours}
+                    onChange={(e) => setEditDurationHours(e.target.value)}
+                    min="1"
+                    className="bg-input"
+                  />
+                  <p className="text-xs text-muted-foreground">Hours</p>
+                </div>
+
+                <Button onClick={saveEdit} className="w-full" disabled={isUpdating}>
+                  {isUpdating ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      Participants
+                    </span>
+                    <span className="font-semibold text-foreground">{users.length}</span>
+                  </div>
+                  {(event.locations && event.locations.length > 0) ? (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        Locations
+                      </span>
+                      <span className="font-semibold text-foreground max-w-[200px] truncate">{event.locations.join(', ')}</span>
+                    </div>
+                  ) : event.location && (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                      </span>
+                      <span className="font-semibold text-foreground">{event.location}</span>
+                    </div>
+                  )}
+                  {event.scheduled_start_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <CalendarDays className="h-4 w-4" />
+                        Starts
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {new Date(event.scheduled_start_at).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Duration
+                    </span>
+                    <span className="font-semibold text-foreground">{event.duration_hours} hours</span>
+                  </div>
+                </div>
+              </>
             )}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                Duration
-              </span>
-              <span className="font-semibold text-foreground">{event.duration_hours} hours</span>
-            </div>
           </CardContent>
         </Card>
 
         {/* Action Buttons */}
         <div className="space-y-3">
-{event.status === 'archived' && (
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={startEvent}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <Play className="mr-2 h-5 w-5" />
-              )}
-              Start Event
-            </Button>
-          )}
           {event.status === 'live' && (
             <Button 
               variant="destructive" 
@@ -337,6 +554,21 @@ async function startEvent() {
                 <Square className="mr-2 h-5 w-5" />
               )}
               End Event
+            </Button>
+          )}
+          {event.status !== 'live' && (
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={startEvent}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <Spinner className="mr-2" />
+              ) : (
+                <Play className="mr-2 h-5 w-5" />
+              )}
+              {event.status === 'ended' ? 'Restart Event' : 'Start Event'}
             </Button>
           )}
         </div>
