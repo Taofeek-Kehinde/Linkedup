@@ -18,11 +18,11 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   
   // Login form
-  const [loginEmail, setLoginEmail] = useState('')
+  const [loginEventName, setLoginEventName] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   
   // Sign up form
-  const [signupEmail, setSignupEmail] = useState('')
+  const [signupEventName, setSignupEventName] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupConfirm, setSignupConfirm] = useState('')
 
@@ -31,9 +31,10 @@ export default function AdminPage() {
     setIsLoading(true)
     setError(null)
 
+    const email = `${loginEventName}@admin.linkupapp.com`
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
+      email,
       password: loginPassword,
     })
 
@@ -63,9 +64,10 @@ export default function AdminPage() {
       return
     }
 
+    const email = `${signupEventName}@admin.linkupapp.com`
     const supabase = createClient()
     const { error } = await supabase.auth.signUp({
-      email: signupEmail,
+      email,
       password: signupPassword,
       options: {
         emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
@@ -81,12 +83,12 @@ export default function AdminPage() {
 
     // For demo purposes, auto-login after signup
     const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: signupEmail,
+      email,
       password: signupPassword,
     })
 
     if (loginError) {
-      setError('Account created! Please check your email to confirm, then log in.')
+      setError('Account created with event name "' + signupEventName + '"! Please check your email to confirm, then log in.')
       setIsLoading(false)
       return
     }
@@ -122,16 +124,17 @@ export default function AdminPage() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-eventname">Event Name</Label>
                     <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="host@example.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
+                      id="login-eventname"
+                      type="text"
+                      placeholder="your-event-name"
+                      value={loginEventName}
+                      onChange={(e) => setLoginEventName(e.target.value)}
                       required
                       className="bg-input"
                     />
+                    <p className="text-xs text-muted-foreground">Enter your event name (we use eventname@admin.linkupapp.com internally)</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>
@@ -161,16 +164,17 @@ export default function AdminPage() {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-eventname">Event Name</Label>
                     <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="host@example.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
+                      id="signup-eventname"
+                      type="text"
+                      placeholder="your-event-name"
+                      value={signupEventName}
+                      onChange={(e) => setSignupEventName(e.target.value)}
                       required
                       className="bg-input"
                     />
+                    <p className="text-xs text-muted-foreground">Choose an event name for login</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
