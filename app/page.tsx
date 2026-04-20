@@ -7,11 +7,17 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { QrCode, Users, MessageCircle, ArrowRight, Scan, X } from 'lucide-react'
+import { QrCode, Users, CameraIcon, ArrowRight, Scan, X } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
 import { getLocalSession } from '@/lib/utils/session'
 import Link from 'next/link'
+import { Dancing_Script } from 'next/font/google';
+
+const dancing = Dancing_Script({
+  subsets: ['latin'],
+  weight: ['700'],
+});
 
 export default function HomePage() {
   const router = useRouter()
@@ -33,7 +39,7 @@ export default function HomePage() {
     async function loadLiveEvent() {
       setIsLoadingEvent(true)
       const supabase = createClient()
-      
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setIsLoadingEvent(false)
@@ -86,23 +92,28 @@ export default function HomePage() {
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/30 blur-2xl rounded-full" />
                 <div className="relative w-20 h-20 rounded-2xl bg-primary/20 border border-primary/30 overflow-hidden drop-shadow-lg">
-                <Image 
-                  src="/logo.png" 
-                  alt="LinkedUp" 
-                  fill 
-                  loading="eager"
-                  className="object-contain p-2 animate-pulse hover:animate-spin transition-all duration-300 hover:scale-110" 
-                />
+                  <Image
+                    src="/logo.png"
+                    alt="LinkedUp"
+                    fill
+                    loading="eager"
+                    className="object-contain p-2 animate-pulse hover:animate-spin transition-all duration-300 hover:scale-110"
+                  />
                 </div>
               </div>
-              <h1 className="text-4xl font-bold text-foreground tracking-tight">LinkedIn</h1>
-              <p className="text-lg text-muted-foreground">Connect with people at events</p>
+              <h1 className="text-4xl font-bold text-foreground tracking-tight">
+                PEEP <br />
+                <span className={`${dancing.className} font-normal`}>
+                  or PASS
+                </span>
+              </h1>
+              <p className="text-lg text-muted-foreground">see who is in</p>
             </div>
 
             {/* Features */}
             <div className="grid grid-cols-3 gap-3">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50 h-auto hover:bg-card hover:border-primary data-[state=open]:bg-transparent"
                 onClick={() => setShowQrModal(true)}
                 size="sm"
@@ -111,12 +122,13 @@ export default function HomePage() {
                 <span className="text-xs text-muted-foreground">Scan QR</span>
               </Button>
               <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50">
-                <Users className="w-6 h-6 text-accent" />
-                <span className="text-xs text-muted-foreground">Meet People</span>
+                <CameraIcon className="w-6 h-6 text-accent" />
+                <span className="text-xs text-muted-foreground">Take Selfie</span>
               </div>
               <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50">
-                <MessageCircle className="w-6 h-6 text-primary" />
-                <span className="text-xs text-muted-foreground">Chat Live</span>
+                {/* <MessageCircle className="w-6 h-6 text-primary" /> */}
+                <Users className="w-6 h-6 text-primary" />
+                <span className="text-xs text-muted-foreground">Meet People</span>
               </div>
             </div>
 
@@ -140,8 +152,8 @@ export default function HomePage() {
                         includeMargin={false}
                       />
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
                       onClick={() => setShowQrModal(false)}
                     >
