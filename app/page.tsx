@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { QrCode, Users, CameraIcon, ArrowRight, Scan, X } from 'lucide-react'
+import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
 import { getLocalSession } from '@/lib/utils/session'
@@ -23,9 +23,9 @@ export default function HomePage() {
   const router = useRouter()
   const [eventCode, setEventCode] = useState('')
   const [hasSession, setHasSession] = useState(false)
-  const [liveEvent, setLiveEvent] = useState<Event | null>(null)
+  const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [showQrModal, setShowQrModal] = useState(false)
-  const [isLoadingEvent, setIsLoadingEvent] = useState(false)
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true)
 
   useEffect(() => {
     // Check if user has existing session
@@ -33,31 +33,21 @@ export default function HomePage() {
     if (session) {
       setHasSession(true)
     }
-  }, [])
 
-  useEffect(() => {
-    async function loadLiveEvent() {
-      setIsLoadingEvent(true)
+    // Load all live events
+    async function loadLiveEvents() {
       const supabase = createClient()
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setIsLoadingEvent(false)
-        return
-      }
-
-      const { data: event } = await supabase
+      const { data } = await supabase
         .from('events')
         .select('*')
-        .eq('host_id', user.id)
         .eq('status', 'live')
-        .single()
-
-      setLiveEvent(event || null)
-      setIsLoadingEvent(false)
+        .gte('ends_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+      setLiveEvents(data || [])
+      setIsLoadingEvents(false)
     }
 
-    loadLiveEvent()
+    loadLiveEvents()
   }, [])
 
   function handleJoin(e: React.FormEvent) {
@@ -72,6 +62,11 @@ export default function HomePage() {
     if (session) {
       router.push(`/show/${session.eventId}`)
     }
+  }
+
+  const joinEvent = (eventCode: string) => {
+    router.push(`/join?code=${eventCode}`)
+    setShowQrModal(false)
   }
 
   return (
@@ -116,52 +111,85 @@ export default function HomePage() {
                 variant="ghost"
                 className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50 h-auto hover:bg-card hover:border-primary data-[state=open]:bg-transparent"
                 onClick={() => setShowQrModal(true)}
-                size="sm"
+                disabled={liveEvents.length === 0 || isLoadingEvents}
               >
                 <Scan className="w-6 h-6 text-primary" />
-                <span className="text-xs text-muted-foreground">Scan QR</span>
+                <span className="text-xs font-medium text-foreground">
+                  {isLoadingEvents ? 'Loading...' : `${liveEvents.length} Live`}
+                </span>
               </Button>
               <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50">
                 <CameraIcon className="w-6 h-6 text-accent" />
                 <span className="text-xs text-muted-foreground">Take Selfie</span>
               </div>
               <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/50 border border-border/50">
-                {/* <MessageCircle className="w-6 h-6 text-primary" /> */}
                 <Users className="w-6 h-6 text-primary" />
                 <span className="text-xs text-muted-foreground">Meet People</span>
               </div>
             </div>
 
-            {/* QR Modal */}
-            {showQrModal && liveEvent && (
-              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <Card className="w-full max-w-sm border-primary/30 bg-card/90 backdrop-blur-xl">
-                  <CardHeader className="text-center pb-2">
-                    <CardTitle className="flex items-center justify-center gap-2 text-foreground">
-                      <QrCode className="h-5 w-5 text-primary" />
-                      {liveEvent.show_name}
-                    </CardTitle>
-                    <CardDescription className="font-mono text-primary">{liveEvent.event_code}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center gap-4 p-6">
-                    <div className="bg-white p-6 rounded-xl shadow-2xl">
-                      <QRCodeCanvas
-                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvent.event_code}`}
-                        size={220}
-                        level="H"
-                        includeMargin={false}
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setShowQrModal(false)}
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Close
-                    </Button>
-                  </CardContent>
-                </Card>
+            {/* QR Modal - All Live Events */}
+            {showQrModal && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                <div className="w-full max-w-4xl max-h-[90vh] flex flex-col">
+                  <Card className="border-primary/50 bg-card/95 backdrop-blur-2xl border-2 shadow-2xl w-full">
+                    <CardHeader className="flex flex-row items-center justify-between pb-4">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <QrCode className="h-6 w-6" />
+                          Live Events ({liveEvents.length})
+                        </CardTitle>
+                        <CardDescription>Scan any QR to join</CardDescription>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowQrModal(false)}
+                        className="hover:bg-card"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="p-0 max-h-[60vh] overflow-y-auto">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
+                        {liveEvents.map((event) => (
+                          <Card 
+                            key={event.id} 
+                            className="border-border/50 hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group hover:scale-[1.02]"
+                            onClick={() => joinEvent(event.event_code)}
+                          >
+                            <CardHeader className="pb-3 px-4 pt-4">
+                              <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
+                                {event.show_name}
+                              </CardTitle>
+                              <CardDescription className="font-mono text-xs uppercase tracking-wider text-primary truncate">
+                                {event.event_code}
+                              </CardDescription>
+                              {event.locations && event.locations.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1 px-1">
+                                  <MapPin className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground line-clamp-1">
+                                    {event.locations.join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                            </CardHeader>
+                            <CardContent className="p-4 flex items-center justify-center">
+                              <div className="bg-white/90 p-3 rounded-xl shadow-md group-hover:shadow-primary/25 transition-all">
+                                <QRCodeCanvas
+                                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code}`}
+                                  size={120}
+                                  level="H"
+                                  includeMargin={false}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
 
@@ -227,4 +255,3 @@ export default function HomePage() {
     </main>
   )
 }
-

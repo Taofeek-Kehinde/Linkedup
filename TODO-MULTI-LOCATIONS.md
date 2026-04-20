@@ -24,4 +24,7 @@
    - Create event, verify DB data
    - Edit event, verify updates
 
-**Next: DB migration**
+### 7. [x] Home page all live events QR modal grid ✅
+   - Fixed: status='live' only (matches admin dashboard)
+   - Button shows count, modal styled QRs grid, click join
+

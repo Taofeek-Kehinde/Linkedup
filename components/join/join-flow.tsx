@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/spinner'
 import Image from 'next/image'
 import { ArrowRight, ArrowLeft, RefreshCw, UserCheck } from 'lucide-react'
 import { getLocalSession, setLocalSession } from '@/lib/utils/session'
-import { generateUsername } from '@/lib/utils/generate-username'
+import { generateEventUsernameClient } from '@/lib/utils/generate-username'
 import { generateVibeKey } from '@/lib/utils/generate-vibe-key'
 import { generateSessionToken } from '@/lib/utils/generate-session-token'
 import { SelfieCapture } from '@/components/join/selfie-capture'
@@ -85,7 +85,9 @@ export function JoinFlow() {
     setEvent(event)
     
     // Generate new identity
-    setUsername(generateUsername())
+    if (event) {
+      setUsername(generateEventUsernameClient(event.show_name))
+    }
     setVibeKey(generateVibeKey())
     
     setStep('identity')
@@ -100,7 +102,9 @@ export function JoinFlow() {
   }
 
   function regenerateIdentity() {
-    setUsername(generateUsername())
+    if (event) {
+      setUsername(generateEventUsernameClient(event.show_name))
+    }
     setVibeKey(generateVibeKey())
   }
 

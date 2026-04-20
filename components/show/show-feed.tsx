@@ -279,12 +279,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               <p className="text-muted-foreground max-w-xs">
                 Share the event code with others so they can join and connect with you.
               </p>
-              <Card className="mt-6 border-border/50 bg-card/50">
-                <CardContent className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Event Code</p>
-                  <p className="text-2xl font-mono font-bold text-primary">{event.event_code}</p>
-                </CardContent>
-              </Card>
+              {/* Event code removed entirely */}
             </div>
           ) : (
             // User cards
