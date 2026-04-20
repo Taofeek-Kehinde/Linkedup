@@ -102,38 +102,39 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     }
   }, [currentUser.id, loadChats])
 
-  // Countdown timer
+  // Countdown timer - FIXED: Immediate countdown for live events
   useEffect(() => {
-    if (event.status !== 'live' || !event.started_at) {
-      setTimeRemaining('Waiting to start')
-      return
-    }
-
     function updateTimer() {
-      if (!event.started_at) return
-      const startTime = new Date(event.started_at).getTime()
-      const endTime = startTime + (event.duration_hours * 60 * 60 * 1000)
-      const now = Date.now()
-      const remaining = endTime - now
+      const now = Date.now();
+      let endTime: number;
 
-      if (remaining <= 0) {
-        setTimeRemaining('Event ended')
-        return
+      if (event.status !== 'live') {
+        setTimeRemaining(event.status === 'ended' ? 'Event ended' : 'Not live yet');
+        return;
       }
 
-      const hours = Math.floor(remaining / (1000 * 60 * 60))
-      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
-
-      if (hours > 0) {
-        setTimeRemaining(`${hours}h ${minutes}m left`)
+      if (event.ends_at) {
+        endTime = new Date(event.ends_at).getTime();
       } else {
-        setTimeRemaining(`${minutes}m left`)
+        const createdTime = new Date(event.created_at).getTime();
+        endTime = createdTime + (event.duration_hours * 60 * 60 * 1000);
       }
+
+      const remaining = endTime - now;
+      if (remaining <= 0) {
+        setTimeRemaining('Event ended');
+        return;
+      }
+
+      const hours = Math.floor(remaining / (1000 * 60 * 60));
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
     }
 
-    updateTimer()
-    const interval = setInterval(updateTimer, 30000) // Update every 30 seconds
-    return () => clearInterval(interval)
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
   }, [event])
 
   function handlePrevious() {
@@ -197,15 +198,15 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         <div className="flex items-center justify-between p-4">
           <div className="flex-1">
             <h1 className="font-bold text-foreground truncate">{event.show_name}</h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
+            <div className="flex items-center justify-center gap-6 text-center mx-auto">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" />
-                {userCount} here
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {timeRemaining}
-              </span>
+                <span>{userCount} here</span>
+              </div>
+              <div className="flex items-center gap-1 text-sm font-mono font-bold text-primary">
+                <Clock className="h-4 w-4" />
+                <span>{timeRemaining}</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -238,8 +239,10 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium ring-2 ring-primary">
-                {currentUser.username.slice(0, 2).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden">
+                <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-secondary">
+                  {currentUser.username.charAt(0).toUpperCase()}
+                </div>
               </div>
             )}
             <div>

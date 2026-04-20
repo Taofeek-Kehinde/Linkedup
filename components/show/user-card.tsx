@@ -26,9 +26,9 @@ export function UserCard({ user, onChat, canChat }: UserCardProps) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-32 h-32 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="w-16 h-16 text-muted-foreground" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                  {user.username.charAt(0).toUpperCase()}
                 </div>
               </div>
             )}
