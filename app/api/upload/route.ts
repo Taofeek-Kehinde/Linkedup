@@ -10,11 +10,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 8)
-    const extension = file.name.split('.').pop() || 'jpg'
-    const filename = `selfies/${timestamp}-${randomId}.${extension}`
+    // Get user identity for deterministic filename
+    const eventId = (formData.get('eventId') as string) || 'unknown'
+    const username = (formData.get('username') as string) || 'unknown'
+
+    // Sanitize username for safe filesystem use
+    const sanitizedUsername = username
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 40) || 'user'
+
+    // Deterministic filename so each user's selfie is their profile picture
+    const filename = `selfies/${eventId}/${sanitizedUsername}.jpg`
 
     // Upload to Vercel Blob (private access)
     const blob = await put(filename, file, {

@@ -22,6 +22,7 @@ export interface EventUser {
   selfie_url: string | null
   session_token: string
   is_upgraded: boolean
+  is_vip: boolean
   auth_user_id: string | null
   created_at: string
 }
@@ -68,6 +69,7 @@ export interface UserSession {
   sessionToken: string
   selfieUrl: string | null
   isUpgraded: boolean
+  isVip: boolean
 }
 
 // Form types

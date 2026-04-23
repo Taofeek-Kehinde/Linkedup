@@ -139,6 +139,7 @@ export function JoinFlow() {
       sessionToken: existingUser.session_token,
       selfieUrl: existingUser.selfie_url,
       isUpgraded: existingUser.is_upgraded,
+      isVip: existingUser.is_vip,
     }
     setLocalSession(session)
     
@@ -162,7 +163,9 @@ export function JoinFlow() {
       if (blob) {
         const formData = new FormData()
         formData.append('file', blob, 'selfie.jpg')
-        
+        formData.append('eventId', event.id)
+        formData.append('username', username)
+
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
@@ -208,6 +211,7 @@ export function JoinFlow() {
         sessionToken: newUser.session_token,
         selfieUrl: newUser.selfie_url,
         isUpgraded: false,
+        isVip: false,
       }
       setLocalSession(session)
 

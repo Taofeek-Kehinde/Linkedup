@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, use } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,18 +8,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreVertical, X } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Send, User, Sticker, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Send, User, Sticker } from 'lucide-react'
 import type { Chat, EventUser, Message, UserSession } from '@/lib/types'
 
-export default function ChatPage({ params }: { params: Promise<{ eventId: string; chatId: string }> }) {
-  const { eventId, chatId } = use(params)
+export default function ChatPage() {
+  const params = useParams()
+  const eventId = params.eventId as string
+  const chatId = params.chatId as string
+  
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -36,6 +39,11 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
   // Load initial data
   useEffect(() => {
     async function loadData() {
+      if (!eventId || !chatId) {
+        router.push('/')
+        return
+      }
+
       const localSession = getLocalSession()
       if (!localSession || localSession.eventId !== eventId) {
         router.push('/')
@@ -171,14 +179,22 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
           </Button>
           
           {partner?.selfie_url ? (
-            <img 
-              src={partner.selfie_url} 
-              alt={partner.username}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <div className="relative">
+              <img 
+                src={partner.selfie_url} 
+                alt={partner.username}
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              {partner.is_vip && (
+                <img src="/tick.png" alt="VIP" className="w-4 h-4 absolute -bottom-0.5 -right-0.5" />
+              )}
+            </div>
           ) : (
-            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+            <div className="relative w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
               <User className="h-5 w-5 text-muted-foreground" />
+              {partner?.is_vip && (
+                <img src="/tick.png" alt="VIP" className="w-4 h-4 absolute -bottom-0.5 -right-0.5" />
+              )}
             </div>
           )}
           
@@ -201,14 +217,44 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
           messages.map((message) => {
             const isOwn = message.sender_id === session.eventUserId
             const replyToMsg = (message as any).reply_to
+
+            // Avatar for the sender of this message
+            const Avatar = () => {
+              if (isOwn) {
+                return session.selfieUrl ? (
+                  <img
+                    src={session.selfieUrl}
+                    alt="You"
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center ring-2 ring-primary">
+                    <span className="text-xs font-bold text-primary">{session.username.charAt(0).toUpperCase()}</span>
+                  </div>
+                )
+              }
+              return partner?.selfie_url ? (
+                <img
+                  src={partner.selfie_url}
+                  alt={partner.username}
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-secondary"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center ring-2 ring-secondary">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )
+            }
+
             return (
+              <div
+                key={message.id}
+                className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} items-end gap-2`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {!isOwn && <Avatar />}
                 <div
-                  key={message.id}
-                  className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} relative`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                <div
-                  className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                  className={`max-w-[70%] px-4 py-2 rounded-2xl relative ${
                     isOwn
                       ? 'bg-primary text-primary-foreground rounded-br-md'
                       : 'bg-secondary text-secondary-foreground rounded-bl-md'
@@ -232,7 +278,7 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
                       </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent sideOffset={5} align="end" className="w-32 p-1">
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={(e) => {
                           e.preventDefault()
                           setReply(message)
@@ -244,6 +290,7 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                {isOwn && <Avatar />}
               </div>
             )
           })
@@ -312,3 +359,4 @@ export default function ChatPage({ params }: { params: Promise<{ eventId: string
     </main>
   )
 }
+

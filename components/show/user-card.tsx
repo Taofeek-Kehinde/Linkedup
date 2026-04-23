@@ -35,21 +35,33 @@ export function UserCard({ user, onChat, canChat }: UserCardProps) {
             
             {/* Overlay gradient */}
             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card to-transparent" />
+
+            {/* VIP tick */}
+            {user.is_vip && (
+              <div className="absolute top-3 right-3">
+                <img src="/tick.png" alt="VIP" className="w-8 h-8 drop-shadow-lg" />
+              </div>
+            )}
           </div>
 
           {/* User info */}
           <div className="p-4 space-y-4 -mt-16 relative">
             <div className="flex items-end justify-between">
-              <div>
+              <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-bold text-foreground">{user.username}</h2>
-                <p className="text-sm font-mono text-primary">{user.vibe_key}</p>
+                {user.is_vip && (
+                  <img src="/tick.png" alt="VIP" className="w-6 h-6" />
+                )}
               </div>
-              {user.is_upgraded && (
-                <Badge className="bg-accent text-accent-foreground">
-                  Upgraded
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {user.is_upgraded && (
+                  <Badge className="bg-accent text-accent-foreground">
+                    Upgraded
+                  </Badge>
+                )}
+              </div>
             </div>
+            <p className="text-sm font-mono text-primary">{user.vibe_key}</p>
 
             {/* Chat button */}
             <Button 

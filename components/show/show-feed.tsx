@@ -245,9 +245,14 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 </div>
               </div>
             )}
-            <div>
-              <p className="text-sm font-medium text-foreground">{currentUser.username}</p>
-              <p className="text-xs font-mono text-muted-foreground">{currentUser.vibe_key}</p>
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">{currentUser.username}</p>
+                <p className="text-xs font-mono text-muted-foreground">{currentUser.vibe_key}</p>
+              </div>
+              {currentUser.is_vip && (
+                <img src="/tick.png" alt="VIP" className="w-5 h-5" />
+              )}
             </div>
           </div>
           <Badge variant="secondary" className="text-xs">

@@ -244,6 +244,18 @@ async function startEvent() {
     setIsUpdating(false)
   }
 
+  async function toggleVip(user: EventUser) {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('event_users')
+      .update({ is_vip: !user.is_vip })
+      .eq('id', user.id)
+
+    if (!error) {
+      setUsers(users.map(u => u.id === user.id ? { ...u, is_vip: !u.is_vip } : u))
+    }
+  }
+
   async function endEvent() {
     if (!event) return
     setIsUpdating(true)
@@ -601,9 +613,20 @@ async function startEvent() {
                       <p className="font-medium text-foreground truncate">{user.username}</p>
                       <p className="text-xs text-muted-foreground font-mono">{user.vibe_key}</p>
                     </div>
+                    {user.is_vip && (
+                      <img src="/tick.png" alt="VIP" className="w-5 h-5" />
+                    )}
                     {user.is_upgraded && (
                       <Badge variant="secondary" className="text-xs">Upgraded</Badge>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleVip(user)}
+                      className={user.is_vip ? 'text-primary' : 'text-muted-foreground'}
+                    >
+                      {user.is_vip ? 'Remove VIP' : 'Make VIP'}
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
