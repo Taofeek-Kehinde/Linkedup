@@ -77,6 +77,8 @@ export default function CreateEventPage() {
     const eventCode = generateEventCode(locations[0] || 'EVENT')
 
     const scheduledStartIso = scheduledStartAt ? scheduledStartAt.toISOString() : null
+    const now = new Date()
+    const endsAt = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString() // 6 hours from now
 
     const { data, error } = await supabase
       .from('events')
@@ -87,6 +89,8 @@ export default function CreateEventPage() {
         duration_hours: 6,
         scheduled_start_at: scheduledStartIso,
         status: 'live',
+        started_at: now.toISOString(),
+        ends_at: endsAt,
         host_id: user.id,
       })
       .select()
@@ -121,7 +125,7 @@ export default function CreateEventPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Create Event</h1>
+            <h1 className="text-2xl font-bold text-foreground">Create PEEP or PASS</h1>
             <p className="text-sm text-muted-foreground">Set up your LinkedUp event</p>
           </div>
         </div>
@@ -134,7 +138,7 @@ export default function CreateEventPage() {
               Event Details
             </CardTitle>
             <CardDescription>
-              Enter the details for your event. A unique code will be generated automatically.
+              Enter the details for your event. A unique QR code will be generated automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin } from 'lucide-react'
+import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
 import { getLocalSession } from '@/lib/utils/session'
@@ -25,6 +25,7 @@ export default function HomePage() {
   const [hasSession, setHasSession] = useState(false)
   const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [showQrModal, setShowQrModal] = useState(false)
+  const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [isLoadingEvents, setIsLoadingEvents] = useState(true)
 
   useEffect(() => {
@@ -37,11 +38,12 @@ export default function HomePage() {
     // Load all live events
     async function loadLiveEvents() {
       const supabase = createClient()
+      const now = new Date().toISOString()
       const { data } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'live')
-        .gte('ends_at', new Date().toISOString())
+        .or(`ends_at.is.null,ends_at.gte.${now}`)
         .order('created_at', { ascending: false })
       setLiveEvents(data || [])
       setIsLoadingEvents(false)
@@ -129,9 +131,9 @@ export default function HomePage() {
             </div>
 
             {/* QR Modal - All Live Events */}
-            {showQrModal && (
+            {showQrModal && liveEvents.length > 0 && (
               <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                <div className="w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="w-full max-w-md max-h-[90vh] flex flex-col">
                   <Card className="border-primary/50 bg-card/95 backdrop-blur-2xl border-2 shadow-2xl w-full">
                     <CardHeader className="flex flex-row items-center justify-between pb-4">
                       <div>
@@ -139,7 +141,7 @@ export default function HomePage() {
                           <QrCode className="h-6 w-6" />
                           Live Events ({liveEvents.length})
                         </CardTitle>
-                        <CardDescription>Scan any QR to join</CardDescription>
+                        <CardDescription>Scan QR to join</CardDescription>
                       </div>
                       <Button
                         variant="ghost"
@@ -150,42 +152,67 @@ export default function HomePage() {
                         <X className="h-5 w-5" />
                       </Button>
                     </CardHeader>
-                    <CardContent className="p-0 max-h-[60vh] overflow-y-auto">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
-                        {liveEvents.map((event) => (
-                          <Card 
-                            key={event.id} 
-                            className="border-border/50 hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group hover:scale-[1.02]"
-                            onClick={() => joinEvent(event.event_code)}
-                          >
-                            <CardHeader className="pb-3 px-4 pt-4">
-                              <CardTitle className="text-base font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                                {event.show_name}
-                              </CardTitle>
-                              <CardDescription className="font-mono text-xs uppercase tracking-wider text-primary truncate">
-                                {event.event_code}
-                              </CardDescription>
-                              {event.locations && event.locations.length > 0 && (
-                                <div className="flex items-center gap-1 mt-1 px-1">
-                                  <MapPin className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground line-clamp-1">
-                                    {event.locations.join(', ')}
-                                  </span>
-                                </div>
-                              )}
-                            </CardHeader>
-                            <CardContent className="p-4 flex items-center justify-center">
-                              <div className="bg-white/90 p-3 rounded-xl shadow-md group-hover:shadow-primary/25 transition-all">
-                                <QRCodeCanvas
-                                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code}`}
-                                  size={120}
-                                  level="H"
-                                  includeMargin={false}
-                                />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                    <CardContent className="p-6">
+                      <div className="flex flex-col items-center gap-5">
+                        {/* Event Info */}
+                        <div className="text-center space-y-1">
+                          <h3 className="text-xl font-bold text-foreground">{liveEvents[currentEventIndex].show_name}</h3>
+                          <p className="font-mono text-sm text-primary uppercase tracking-wider">{liveEvents[currentEventIndex].event_code}</p>
+                          {liveEvents[currentEventIndex].locations && liveEvents[currentEventIndex].locations.length > 0 && (
+                            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {liveEvents[currentEventIndex].locations.join(', ')}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Big QR Code */}
+                        <div className="bg-white p-5 rounded-2xl shadow-xl cursor-pointer" onClick={() => joinEvent(liveEvents[currentEventIndex].event_code)}>
+                          <QRCodeCanvas
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvents[currentEventIndex].event_code}`}
+                            size={280}
+                            level="H"
+                            includeMargin={false}
+                          />
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">Tap QR to join</p>
+
+                        {/* Navigation */}
+                        {liveEvents.length > 1 && (
+                          <div className="flex items-center gap-4 w-full">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-10 w-10 rounded-full"
+                              onClick={() => setCurrentEventIndex((prev) => (prev === 0 ? liveEvents.length - 1 : prev - 1))}
+                            >
+                              <ChevronLeft className="h-5 w-5" />
+                            </Button>
+                            <div className="flex-1 text-center">
+                              <span className="text-sm text-muted-foreground">
+                                {currentEventIndex + 1} / {liveEvents.length}
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-10 w-10 rounded-full"
+                              onClick={() => setCurrentEventIndex((prev) => (prev === liveEvents.length - 1 ? 0 : prev + 1))}
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Join Button */}
+                        <Button
+                          className="w-full"
+                          onClick={() => joinEvent(liveEvents[currentEventIndex].event_code)}
+                        >
+                          <ArrowRight className="mr-2 h-4 w-4" />
+                          Join {liveEvents[currentEventIndex].show_name}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
