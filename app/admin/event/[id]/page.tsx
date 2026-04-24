@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label'
 import { 
   ArrowLeft, 
   Play, 
-  Square, 
   Copy, 
   Check, 
   Users, 
@@ -292,20 +291,37 @@ async function startEvent() {
     }
   }
 
-  async function endEvent() {
+  // Host profile setup
+  const [showHostSetup, setShowHostSetup] = useState(false)
+  const [hostName, setHostName] = useState('')
+  const [hostBio, setHostBio] = useState('')
+  const [hostInstagram, setHostInstagram] = useState('')
+  const [hostTwitter, setHostTwitter] = useState('')
+
+  async function saveHostProfile() {
     if (!event) return
     setIsUpdating(true)
 
     const supabase = createClient()
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('events')
-      .update({ status: 'ended' })
+      .update({
+        host_name: hostName.trim() || null,
+        host_bio: hostBio.trim() || null,
+        host_instagram: hostInstagram.trim() || null,
+        host_twitter: hostTwitter.trim() || null,
+      })
       .eq('id', event.id)
-      .select()
-      .single()
 
-    if (!error && data) {
-      setEvent(data)
+    if (!error) {
+      setEvent({
+        ...event,
+        host_name: hostName.trim() || null,
+        host_bio: hostBio.trim() || null,
+        host_instagram: hostInstagram.trim() || null,
+        host_twitter: hostTwitter.trim() || null,
+      })
+      setShowHostSetup(false)
     }
     setIsUpdating(false)
   }
@@ -593,18 +609,13 @@ async function startEvent() {
         <div className="space-y-3">
           {event.status === 'live' && (
             <Button 
-              variant="destructive" 
+              variant="outline"
               className="w-full" 
               size="lg"
-              onClick={endEvent}
-              disabled={isUpdating}
+              onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}
             >
-              {isUpdating ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <Square className="mr-2 h-5 w-5" />
-              )}
-              End Event
+              <Users className="mr-2 h-5 w-5" />
+              SET UP HOST EVENT
             </Button>
           )}
           {event.status === 'ended' && (

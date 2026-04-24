@@ -85,11 +85,12 @@ export default function CreateEventPage() {
     const startedAt = isUpcoming ? null : now.toISOString()
     const endsAt = isUpcoming ? null : new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString()
 
-    const { data, error } = await supabase
+      const { data, error } = await supabase
       .from('events')
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
+        host_name: showName.trim(),
         locations: locations,
         duration_hours: 6,
         scheduled_start_at: scheduledStartIso,
