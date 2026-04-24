@@ -377,7 +377,7 @@ async function startEvent() {
               />
             </div>
             <div className="flex gap-2 w-full">
-          <Button 
+          {/* <Button 
             variant="outline" 
             className="flex-1"
             onClick={copyCode}
@@ -388,7 +388,7 @@ async function startEvent() {
               <Copy className="mr-2 h-4 w-4" />
             )}
             {copied ? 'Copied!' : 'Copy Code'}
-          </Button>
+          </Button> */}
           <Button 
             variant="outline" 
             className="flex-1"

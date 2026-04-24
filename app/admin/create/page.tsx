@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { ArrowLeft, Sparkles, MapPin, Clock, Check, Plus, Edit3, Trash2, CalendarDays } from 'lucide-react'
 import Link from 'next/link'
@@ -26,7 +25,6 @@ export default function CreateEventPage() {
   const [locations, setLocations] = useState<string[]>([])
   const [newLocation, setNewLocation] = useState('')
   const [scheduledStartAt, setScheduledStartAt] = useState<Date | null>(null)
-  const [durationHours, setDurationHours] = useState('6')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   useEffect(() => {
@@ -86,7 +84,7 @@ export default function CreateEventPage() {
         event_code: eventCode,
         show_name: showName.trim(),
         locations: locations,
-        duration_hours: parseInt(durationHours),
+        duration_hours: 6,
         scheduled_start_at: scheduledStartIso,
         status: 'live',
         host_id: user.id,
@@ -244,25 +242,15 @@ export default function CreateEventPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="duration" className="flex items-center gap-2">
+                <Label className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   Duration
                 </Label>
-                <Select value={durationHours} onValueChange={setDurationHours}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2 hours</SelectItem>
-                    <SelectItem value="4">4 hours</SelectItem>
-                    <SelectItem value="6">6 hours (recommended)</SelectItem>
-                    <SelectItem value="8">8 hours</SelectItem>
-                    <SelectItem value="12">12 hours</SelectItem>
-                    <SelectItem value="24">24 hours</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                  <span className="text-sm font-medium">6 hours</span>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Users can connect during this time window.
+                  Every event lasts exactly 6 hours.
                 </p>
               </div>
 

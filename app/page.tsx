@@ -209,7 +209,7 @@ export default function HomePage() {
             )}
 
             {/* Join Form */}
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            {/* <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-4">
                 <form onSubmit={handleJoin} className="space-y-3">
                   <div className="relative">
@@ -236,7 +236,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </section>
         {/* Footer */}
