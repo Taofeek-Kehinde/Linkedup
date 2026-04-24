@@ -78,7 +78,12 @@ export default function CreateEventPage() {
 
     const scheduledStartIso = scheduledStartAt ? scheduledStartAt.toISOString() : null
     const now = new Date()
-    const endsAt = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString() // 6 hours from now
+
+    // Determine if event should start immediately or be upcoming
+    const isUpcoming = scheduledStartAt && scheduledStartAt.getTime() > now.getTime()
+    const status = isUpcoming ? 'upcoming' : 'live'
+    const startedAt = isUpcoming ? null : now.toISOString()
+    const endsAt = isUpcoming ? null : new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString()
 
     const { data, error } = await supabase
       .from('events')
@@ -88,8 +93,8 @@ export default function CreateEventPage() {
         locations: locations,
         duration_hours: 6,
         scheduled_start_at: scheduledStartIso,
-        status: 'live',
-        started_at: now.toISOString(),
+        status,
+        starts_at: startedAt,
         ends_at: endsAt,
         host_id: user.id,
       })

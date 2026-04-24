@@ -29,6 +29,19 @@ export default function AdminDashboard() {
       }
       setUser(user)
 
+      // Auto-start any upcoming events whose scheduled time has passed
+      const now = new Date().toISOString()
+      await supabase
+        .from('events')
+        .update({ 
+          status: 'live', 
+          starts_at: now,
+          ends_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+        })
+        .eq('host_id', user.id)
+        .eq('status', 'upcoming')
+        .lte('scheduled_start_at', now)
+
       // Load events for this host
       const { data: events } = await supabase
         .from('events')
@@ -58,7 +71,8 @@ export default function AdminDashboard() {
   }
 
   const liveEvents = events.filter(e => e.status === 'live')
-  const archivedEvents = events.filter(e => e.status === 'archived')
+  const upcomingEvents = events.filter(e => e.status === 'upcoming')
+  const archivedEvents = events.filter(e => e.status === 'archived' || e.status === 'ended')
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -115,7 +129,7 @@ export default function AdminDashboard() {
         </Link>
 
         {/* Active Events */}
-{liveEvents.length > 0 && (
+        {liveEvents.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -127,8 +141,21 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {/* Pending Events */}
-{archivedEvents.length > 0 && (
+        {/* Upcoming Events */}
+        {upcomingEvents.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-yellow-500" />
+              Upcoming Events
+            </h2>
+            {upcomingEvents.map(event => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </section>
+        )}
+
+        {/* Archived Events */}
+        {archivedEvents.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-foreground">Archived Events</h2>
             {archivedEvents.map(event => (
@@ -157,6 +184,7 @@ export default function AdminDashboard() {
 function EventCard({ event }: { event: Event }) {
   const statusColors = {
     live: 'bg-green-500/20 text-green-400',
+    upcoming: 'bg-yellow-500/20 text-yellow-400',
     ended: 'bg-orange-500/20 text-orange-400',
     archived: 'bg-muted text-muted-foreground',
   } as const

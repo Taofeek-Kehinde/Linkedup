@@ -62,6 +62,13 @@ export function JoinFlow() {
   async function validateCode(code: string) {
     setIsLoading(true)
     setError(null)
+
+    // Try to auto-start any upcoming events first
+    try {
+      await fetch('/api/events/auto-start', { method: 'POST' })
+    } catch {
+      // Silently fail
+    }
     
     const supabase = createClient()
     const { data: event, error } = await supabase
@@ -78,6 +85,12 @@ export function JoinFlow() {
 
     if (event.status === 'ended') {
       setError('This event has ended.')
+      setIsLoading(false)
+      return
+    }
+
+    if (event.status === 'upcoming') {
+      setError('This event has not started yet.')
       setIsLoading(false)
       return
     }

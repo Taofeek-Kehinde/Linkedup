@@ -42,6 +42,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   const [isUpdating, setIsUpdating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
+  const [upcomingCountdown, setUpcomingCountdown] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editShowName, setEditShowName] = useState('')
   const [editLocations, setEditLocations] = useState<string[]>([])
@@ -139,13 +140,13 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     }
   }, [event, id])
 
-  // Countdown timer
+  // Countdown timer for live events
   useEffect(() => {
-    if (!event || event.status !== 'live' || !event.started_at) return
+    if (!event || event.status !== 'live' || !event.starts_at) return
 
     function updateTimer() {
-      if (!event?.started_at) return
-      const startTime = new Date(event.started_at).getTime()
+      if (!event?.starts_at) return
+      const startTime = new Date(event.starts_at).getTime()
       const endTime = startTime + (event.duration_hours * 60 * 60 * 1000)
       const now = Date.now()
       const remaining = endTime - now
@@ -166,6 +167,41 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
     updateTimer()
     const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [event])
+
+  // Upcoming event countdown + auto-refresh when start time arrives
+  useEffect(() => {
+    if (!event || event.status !== 'upcoming' || !event.scheduled_start_at) return
+
+    function updateCountdown() {
+      const startTime = new Date(event!.scheduled_start_at!).getTime()
+      const now = Date.now()
+      const remaining = startTime - now
+
+      if (remaining <= 0) {
+        setUpcomingCountdown('Starting now...')
+        // Auto-refresh to pick up status change
+        window.location.reload()
+        return
+      }
+
+      const days = Math.floor(remaining / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+
+      if (days > 0) {
+        setUpcomingCountdown(`${days}d ${hours}h ${minutes}m`)
+      } else {
+        setUpcomingCountdown(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        )
+      }
+    }
+
+    updateCountdown()
+    const interval = setInterval(updateCountdown, 1000)
     return () => clearInterval(interval)
   }, [event])
 
@@ -231,7 +267,7 @@ async function startEvent() {
       .from('events')
       .update({ 
         status: 'live', 
-        started_at: new Date().toISOString(),
+        starts_at: new Date().toISOString(),
         ends_at: endTime 
       })
       .eq('id', event.id)
@@ -355,63 +391,53 @@ async function startEvent() {
           </Button>
         </div>
 
-        {/* QR Code Card */}
-        <Card className="border-border/50 bg-card/50">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="flex items-center justify-center gap-2 text-foreground">
-              <QrCodeIcon className="h-5 w-5 text-primary" />
-              Scan to Join
-            </CardTitle>
-            <CardDescription>
-              Share this QR code with attendees
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <div className="bg-white p-4 rounded-xl">
-              <QRCodeCanvas
-                ref={qrRef}
-                value={joinUrl}
-                size={200}
-                level="H"
-                includeMargin={false}
-              />
-            </div>
-            <div className="flex gap-2 w-full">
-          {/* <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={copyCode}
-          >
-            {copied ? (
-              <Check className="mr-2 h-4 w-4" />
-            ) : (
-              <Copy className="mr-2 h-4 w-4" />
-            )}
-            {copied ? 'Copied!' : 'Copy Code'}
-          </Button> */}
-          <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={downloadQR}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download QR
-          </Button>
-        </div>
+        {/* QR Code Card - only for live events */}
+        {event.status === 'live' && (
+          <Card className="border-border/50 bg-card/50">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="flex items-center justify-center gap-2 text-foreground">
+                <QrCodeIcon className="h-5 w-5 text-primary" />
+                Scan to Join
+              </CardTitle>
+              <CardDescription>
+                Share this QR code with attendees
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-xl">
+                <QRCodeCanvas
+                  ref={qrRef}
+                  value={joinUrl}
+                  size={200}
+                  level="H"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="flex gap-2 w-full">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={downloadQR}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download QR
+                </Button>
+              </div>
 
-        {isEditing && (
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
-              Cancel
-            </Button>
-            <Button onClick={saveEdit} disabled={isUpdating} className="flex-1">
-              {isUpdating ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
-              Save
-            </Button>
-          </div>
+              {isEditing && (
+                <div className="flex gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button onClick={saveEdit} disabled={isUpdating} className="flex-1">
+                    {isUpdating ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
-      </CardContent>
-    </Card>
 
         {/* Status & Timer */}
         {event.status === 'live' && timeRemaining && (
@@ -419,6 +445,19 @@ async function startEvent() {
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">Time Remaining</p>
               <p className="text-3xl font-mono font-bold text-primary">{timeRemaining}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Upcoming Countdown */}
+        {event.status === 'upcoming' && upcomingCountdown && (
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <CardContent className="p-4 text-center">
+              <p className="text-sm text-muted-foreground mb-1">Starts In</p>
+              <p className="text-3xl font-mono font-bold text-yellow-400">{upcomingCountdown}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Event will start automatically
+              </p>
             </CardContent>
           </Card>
         )}
@@ -568,7 +607,7 @@ async function startEvent() {
               End Event
             </Button>
           )}
-          {event.status !== 'live' && (
+          {event.status === 'ended' && (
             <Button 
               className="w-full" 
               size="lg"
@@ -580,7 +619,7 @@ async function startEvent() {
               ) : (
                 <Play className="mr-2 h-5 w-5" />
               )}
-              {event.status === 'ended' ? 'Restart Event' : 'Start Event'}
+              Restart Event
             </Button>
           )}
         </div>
@@ -637,3 +676,4 @@ async function startEvent() {
     </main>
   )
 }
+

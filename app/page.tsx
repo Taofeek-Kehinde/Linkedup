@@ -36,15 +36,25 @@ export default function HomePage() {
       setHasSession(true)
     }
 
+    // Auto-start any upcoming events whose time has passed
+    async function autoStartEvents() {
+      try {
+        await fetch('/api/events/auto-start', { method: 'POST' })
+      } catch {
+        // Silently fail - events may already be live
+      }
+    }
+
     // Load all live events
     async function loadLiveEvents() {
+      await autoStartEvents()
       const supabase = createClient()
       const now = new Date().toISOString()
       const { data } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'live')
-        .or(`ends_at.is.null,ends_at.gte.${now}`)
+        .gte('ends_at', now)
         .order('created_at', { ascending: false })
       setLiveEvents(data || [])
       setIsLoadingEvents(false)
@@ -152,9 +162,9 @@ export default function HomePage() {
             {/* QR Modal - All Live Events */}
             {showQrModal && liveEvents.length > 0 && (
               <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                <div className="w-full max-w-md max-h-[90vh] flex flex-col">
-                  <Card className="border-primary/50 bg-card/95 backdrop-blur-2xl border-2 shadow-2xl w-full">
-                    <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <div className="w-full max-w-sm max-h-[90vh] flex flex-col overflow-hidden">
+                  <Card className="border-primary/50 bg-card/95 backdrop-blur-2xl border-2 shadow-2xl w-full overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-4 flex-shrink-0">
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           <QrCode className="h-6 w-6" />
@@ -171,11 +181,11 @@ export default function HomePage() {
                         <X className="h-5 w-5" />
                       </Button>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col items-center gap-5">
+                    <CardContent className="p-4 overflow-y-auto">
+                      <div className="flex flex-col items-center gap-4">
                         {/* Event Info */}
                         <div className="text-center space-y-1">
-                          <h3 className="text-xl font-bold text-foreground">{liveEvents[currentEventIndex].show_name}</h3>
+                          <h3 className="text-lg font-bold text-foreground">{liveEvents[currentEventIndex].show_name}</h3>
                           <p className="font-mono text-sm text-primary uppercase tracking-wider">{liveEvents[currentEventIndex].event_code}</p>
                           {liveEvents[currentEventIndex].locations && liveEvents[currentEventIndex].locations.length > 0 && (
                             <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
@@ -186,23 +196,23 @@ export default function HomePage() {
                         </div>
 
                         {/* QR Carousel */}
-                        <div className="flex items-center gap-3 w-full">
+                        <div className="flex items-center gap-2 w-full">
                           {liveEvents.length > 1 && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-12 w-12 rounded-full flex-shrink-0"
+                              className="h-10 w-10 rounded-full flex-shrink-0"
                               onClick={() => setCurrentEventIndex((prev) => (prev === 0 ? liveEvents.length - 1 : prev - 1))}
                             >
-                              <ChevronLeft className="h-6 w-6" />
+                              <ChevronLeft className="h-5 w-5" />
                             </Button>
                           )}
-                          <div className="flex-1 flex justify-center">
-                            <div className="bg-white p-5 rounded-2xl shadow-xl">
+                          <div className="flex-1 flex justify-center min-w-0">
+                            <div className="bg-white p-4 rounded-2xl shadow-xl">
                               <QRCodeCanvas
                                 ref={qrRef}
                                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvents[currentEventIndex].event_code}`}
-                                size={240}
+                                size={200}
                                 level="H"
                                 includeMargin={false}
                               />
@@ -212,10 +222,10 @@ export default function HomePage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-12 w-12 rounded-full flex-shrink-0"
+                              className="h-10 w-10 rounded-full flex-shrink-0"
                               onClick={() => setCurrentEventIndex((prev) => (prev === liveEvents.length - 1 ? 0 : prev + 1))}
                             >
-                              <ChevronRight className="h-6 w-6" />
+                              <ChevronRight className="h-5 w-5" />
                             </Button>
                           )}
                         </div>
@@ -308,3 +318,4 @@ export default function HomePage() {
     </main>
   )
 }
+

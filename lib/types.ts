@@ -6,9 +6,9 @@ export interface Event {
   location: string | null
   locations: string[] | null
   duration_hours: number
-  status: 'live' | 'ended' | 'archived'
+  status: 'upcoming' | 'live' | 'ended' | 'archived'
   host_id: string | null
-  started_at: string | null
+  starts_at: string | null
   ends_at: string | null
   scheduled_start_at: string | null
   created_at: string
