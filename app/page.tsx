@@ -1,13 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
 import { getLocalSession } from '@/lib/utils/session'
@@ -27,6 +27,7 @@ export default function HomePage() {
   const [showQrModal, setShowQrModal] = useState(false)
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [isLoadingEvents, setIsLoadingEvents] = useState(true)
+  const qrRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     // Check if user has existing session
@@ -69,6 +70,24 @@ export default function HomePage() {
   const joinEvent = (eventCode: string) => {
     router.push(`/join?code=${eventCode}`)
     setShowQrModal(false)
+  }
+
+  const downloadQR = () => {
+    if (qrRef.current) {
+      const canvas = qrRef.current
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `LinkedUp-${liveEvents[currentEventIndex]?.event_code || 'QR'}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }
+      }, 'image/png')
+    }
   }
 
   return (
@@ -166,44 +185,51 @@ export default function HomePage() {
                           )}
                         </div>
 
-                        {/* Big QR Code */}
-                        <div className="bg-white p-5 rounded-2xl shadow-xl cursor-pointer" onClick={() => joinEvent(liveEvents[currentEventIndex].event_code)}>
-                          <QRCodeCanvas
-                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvents[currentEventIndex].event_code}`}
-                            size={280}
-                            level="H"
-                            includeMargin={false}
-                          />
-                        </div>
-
-                        <p className="text-xs text-muted-foreground">Tap QR to join</p>
-
-                        {/* Navigation */}
-                        {liveEvents.length > 1 && (
-                          <div className="flex items-center gap-4 w-full">
+                        {/* QR Carousel */}
+                        <div className="flex items-center gap-3 w-full">
+                          {liveEvents.length > 1 && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-10 w-10 rounded-full"
+                              className="h-12 w-12 rounded-full flex-shrink-0"
                               onClick={() => setCurrentEventIndex((prev) => (prev === 0 ? liveEvents.length - 1 : prev - 1))}
                             >
-                              <ChevronLeft className="h-5 w-5" />
+                              <ChevronLeft className="h-6 w-6" />
                             </Button>
-                            <div className="flex-1 text-center">
-                              <span className="text-sm text-muted-foreground">
-                                {currentEventIndex + 1} / {liveEvents.length}
-                              </span>
+                          )}
+                          <div className="flex-1 flex justify-center">
+                            <div className="bg-white p-5 rounded-2xl shadow-xl">
+                              <QRCodeCanvas
+                                ref={qrRef}
+                                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvents[currentEventIndex].event_code}`}
+                                size={240}
+                                level="H"
+                                includeMargin={false}
+                              />
                             </div>
+                          </div>
+                          {liveEvents.length > 1 && (
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-10 w-10 rounded-full"
+                              className="h-12 w-12 rounded-full flex-shrink-0"
                               onClick={() => setCurrentEventIndex((prev) => (prev === liveEvents.length - 1 ? 0 : prev + 1))}
                             >
-                              <ChevronRight className="h-5 w-5" />
+                              <ChevronRight className="h-6 w-6" />
                             </Button>
-                          </div>
+                          )}
+                        </div>
+
+                        {liveEvents.length > 1 && (
+                          <p className="text-sm text-muted-foreground">
+                            {currentEventIndex + 1} / {liveEvents.length}
+                          </p>
                         )}
+
+                        <Button variant="outline" className="w-full" onClick={downloadQR}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download QR
+                        </Button>
 
                         {/* Join Button */}
                         <Button

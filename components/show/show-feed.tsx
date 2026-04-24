@@ -284,9 +284,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">You&apos;re the first one here!</h2>
-              <p className="text-muted-foreground max-w-xs">
-                Share the event code with others so they can join and connect with you.
-              </p>
               {/* Event code removed entirely */}
             </div>
           ) : (
