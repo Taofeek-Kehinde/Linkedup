@@ -213,7 +213,7 @@ export default function HostSetupPage() {
       }
     }
 
-    router.push(`/show/${event.id}`)
+    router.push(`/admin/event/${event.id}`)
   }
 
   if (isLoading || !event) {
