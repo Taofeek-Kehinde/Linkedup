@@ -90,7 +90,6 @@ export default function CreateEventPage() {
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
-        host_name: showName.trim(),
         locations: locations,
         duration_hours: 6,
         scheduled_start_at: scheduledStartIso,
