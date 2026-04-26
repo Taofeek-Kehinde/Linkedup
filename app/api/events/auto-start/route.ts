@@ -15,7 +15,20 @@ export async function POST() {
 
   const now = new Date().toISOString()
 
-  const { data, error } = await supabase
+  // Auto-end any live events whose end time has passed
+  const { data: endedData, error: endError } = await supabase
+    .from('events')
+    .update({ status: 'ended' })
+    .eq('status', 'live')
+    .lt('ends_at', now)
+    .select('id')
+
+  if (endError) {
+    return NextResponse.json({ error: endError.message }, { status: 500 })
+  }
+
+  // Auto-start any upcoming events whose scheduled time has passed
+  const { data: startedData, error: startError } = await supabase
     .from('events')
     .update({
       status: 'live',
@@ -26,10 +39,10 @@ export async function POST() {
     .lte('scheduled_start_at', now)
     .select('id')
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (startError) {
+    return NextResponse.json({ error: startError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ started: data?.length || 0 })
+  return NextResponse.json({ started: startedData?.length || 0, ended: endedData?.length || 0 })
 }
 

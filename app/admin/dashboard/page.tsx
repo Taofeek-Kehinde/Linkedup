@@ -29,8 +29,17 @@ export default function AdminDashboard() {
       }
       setUser(user)
 
-      // Auto-start any upcoming events whose scheduled time has passed
       const now = new Date().toISOString()
+
+      // Auto-end any live events whose end time has passed
+      await supabase
+        .from('events')
+        .update({ status: 'ended' })
+        .eq('host_id', user.id)
+        .eq('status', 'live')
+        .lt('ends_at', now)
+
+      // Auto-start any upcoming events whose scheduled time has passed
       await supabase
         .from('events')
         .update({ 
