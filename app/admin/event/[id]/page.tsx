@@ -93,11 +93,37 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         return
       }
 
-      setEvent(eventData)
-      setEditShowName(eventData.show_name)
-      setEditLocations(eventData.locations || [])
-      setEditScheduledStartAt(eventData.scheduled_start_at ? new Date(eventData.scheduled_start_at) : null)
-      setEditDurationHours(eventData.duration_hours.toString())
+      // Check if live event has expired and auto-end it
+      let eventToUse = eventData
+      if (eventData.status === 'live') {
+        const nowTime = Date.now()
+        let expired = false
+        if (eventData.ends_at) {
+          expired = new Date(eventData.ends_at).getTime() < nowTime
+        } else if (eventData.starts_at) {
+          expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < nowTime
+        } else {
+          expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < nowTime
+        }
+
+        if (expired) {
+          const { data: updatedEvent } = await supabase
+            .from('events')
+            .update({ status: 'ended' })
+            .eq('id', eventData.id)
+            .select()
+            .single()
+          if (updatedEvent) {
+            eventToUse = updatedEvent
+          }
+        }
+      }
+
+      setEvent(eventToUse)
+      setEditShowName(eventToUse.show_name)
+      setEditLocations(eventToUse.locations || [])
+      setEditScheduledStartAt(eventToUse.scheduled_start_at ? new Date(eventToUse.scheduled_start_at) : null)
+      setEditDurationHours(eventToUse.duration_hours.toString())
 
       // Load users
       const { data: usersData } = await supabase
@@ -141,17 +167,36 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
   // Countdown timer for live events
   useEffect(() => {
-    if (!event || event.status !== 'live' || !event.starts_at) return
+    if (!event || event.status !== 'live') return
 
-    function updateTimer() {
-      if (!event?.starts_at) return
-      const startTime = new Date(event.starts_at).getTime()
-      const endTime = startTime + (event.duration_hours * 60 * 60 * 1000)
+    async function updateTimer() {
+      if (!event) return
       const now = Date.now()
+      let endTime: number
+
+      if (event.ends_at) {
+        endTime = new Date(event.ends_at).getTime()
+      } else if (event.starts_at) {
+        endTime = new Date(event.starts_at).getTime() + (event.duration_hours * 60 * 60 * 1000)
+      } else {
+        endTime = new Date(event.created_at).getTime() + (6 * 60 * 60 * 1000)
+      }
+
       const remaining = endTime - now
 
       if (remaining <= 0) {
         setTimeRemaining('Event ended')
+        // Update event status to ended in DB and local state
+        const supabase = createClient()
+        const { data: updatedEvent } = await supabase
+          .from('events')
+          .update({ status: 'ended' })
+          .eq('id', event.id)
+          .select()
+          .single()
+        if (updatedEvent) {
+          setEvent(updatedEvent)
+        }
         return
       }
 

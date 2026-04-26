@@ -14,17 +14,46 @@ export async function POST() {
   })
 
   const now = new Date().toISOString()
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 
-  // Auto-end any live events whose end time has passed
-  const { data: endedData, error: endError } = await supabase
+  // Auto-end any live events whose end time has passed (with ends_at set)
+  const { data: endedData1, error: endError1 } = await supabase
     .from('events')
     .update({ status: 'ended' })
     .eq('status', 'live')
     .lt('ends_at', now)
     .select('id')
 
-  if (endError) {
-    return NextResponse.json({ error: endError.message }, { status: 500 })
+  if (endError1) {
+    return NextResponse.json({ error: endError1.message }, { status: 500 })
+  }
+
+  // Auto-end live events with null ends_at that started more than 6 hours ago
+  const { data: endedData2, error: endError2 } = await supabase
+    .from('events')
+    .update({ status: 'ended', ends_at: now })
+    .eq('status', 'live')
+    .is('ends_at', null)
+    .not('starts_at', 'is', null)
+    .lt('starts_at', sixHoursAgo)
+    .select('id')
+
+  if (endError2) {
+    return NextResponse.json({ error: endError2.message }, { status: 500 })
+  }
+
+  // Auto-end live events with both ends_at and starts_at null that were created more than 6 hours ago
+  const { data: endedData3, error: endError3 } = await supabase
+    .from('events')
+    .update({ status: 'ended', ends_at: now })
+    .eq('status', 'live')
+    .is('ends_at', null)
+    .is('starts_at', null)
+    .lt('created_at', sixHoursAgo)
+    .select('id')
+
+  if (endError3) {
+    return NextResponse.json({ error: endError3.message }, { status: 500 })
   }
 
   // Auto-start any upcoming events whose scheduled time has passed
@@ -43,6 +72,9 @@ export async function POST() {
     return NextResponse.json({ error: startError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ started: startedData?.length || 0, ended: endedData?.length || 0 })
+  return NextResponse.json({ 
+    started: startedData?.length || 0, 
+    ended: (endedData1?.length || 0) + (endedData2?.length || 0) + (endedData3?.length || 0) 
+  })
 }
 

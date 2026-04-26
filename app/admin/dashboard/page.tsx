@@ -30,14 +30,35 @@ export default function AdminDashboard() {
       setUser(user)
 
       const now = new Date().toISOString()
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 
-      // Auto-end any live events whose end time has passed
+      // Auto-end any live events whose end time has passed (with ends_at set)
       await supabase
         .from('events')
         .update({ status: 'ended' })
         .eq('host_id', user.id)
         .eq('status', 'live')
         .lt('ends_at', now)
+
+      // Auto-end live events with null ends_at that started more than duration_hours ago
+      await supabase
+        .from('events')
+        .update({ status: 'ended', ends_at: now })
+        .eq('host_id', user.id)
+        .eq('status', 'live')
+        .is('ends_at', null)
+        .not('starts_at', 'is', null)
+        .lt('starts_at', sixHoursAgo)
+
+      // Auto-end live events with both ends_at and starts_at null that were created more than 6 hours ago
+      await supabase
+        .from('events')
+        .update({ status: 'ended', ends_at: now })
+        .eq('host_id', user.id)
+        .eq('status', 'live')
+        .is('ends_at', null)
+        .is('starts_at', null)
+        .lt('created_at', sixHoursAgo)
 
       // Auto-start any upcoming events whose scheduled time has passed
       await supabase
