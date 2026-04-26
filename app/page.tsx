@@ -1,13 +1,13 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, Clock, MapPin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
 import { getLocalSession } from '@/lib/utils/session'
@@ -21,13 +21,11 @@ const dancing = Dancing_Script({
 
 export default function HomePage() {
   const router = useRouter()
-  const [eventCode, setEventCode] = useState('')
   const [hasSession, setHasSession] = useState(false)
   const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [showQrModal, setShowQrModal] = useState(false)
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [isLoadingEvents, setIsLoadingEvents] = useState(true)
-  const qrRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     // Check if user has existing session
@@ -63,13 +61,6 @@ export default function HomePage() {
     loadLiveEvents()
   }, [])
 
-  function handleJoin(e: React.FormEvent) {
-    e.preventDefault()
-    if (eventCode.trim()) {
-      router.push(`/join?code=${eventCode.trim().toUpperCase()}`)
-    }
-  }
-
   function handleResume() {
     const session = getLocalSession()
     if (session) {
@@ -77,28 +68,7 @@ export default function HomePage() {
     }
   }
 
-  const joinEvent = (eventCode: string) => {
-    router.push(`/join?code=${eventCode}`)
-    setShowQrModal(false)
-  }
 
-  const downloadQR = () => {
-    if (qrRef.current) {
-      const canvas = qrRef.current
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `LinkedUp-${liveEvents[currentEventIndex]?.event_code || 'QR'}.png`
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
-        }
-      }, 'image/png')
-    }
-  }
 
   return (
     <main className="min-h-dvh flex flex-col relative overflow-hidden">
@@ -208,9 +178,8 @@ export default function HomePage() {
                             </Button>
                           )}
                           <div className="flex-1 flex justify-center min-w-0">
-                            <div className="bg-white p-4 rounded-2xl shadow-xl">
+                        <div className="bg-white p-4 rounded-2xl shadow-xl">
                               <QRCodeCanvas
-                                ref={qrRef}
                                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${liveEvents[currentEventIndex].event_code}`}
                                 size={200}
                                 level="H"
@@ -235,20 +204,6 @@ export default function HomePage() {
                             {currentEventIndex + 1} / {liveEvents.length}
                           </p>
                         )}
-
-                        <Button variant="outline" className="w-full" onClick={downloadQR}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download QR
-                        </Button>
-
-                        {/* Join Button */}
-                        <Button
-                          className="w-full"
-                          onClick={() => joinEvent(liveEvents[currentEventIndex].event_code)}
-                        >
-                          <ArrowRight className="mr-2 h-4 w-4" />
-                          Join {liveEvents[currentEventIndex].show_name}
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>

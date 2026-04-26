@@ -8,12 +8,6 @@ export interface Event {
   duration_hours: number
   status: 'upcoming' | 'live' | 'ended' | 'archived'
   host_id: string | null
-  host_name: string | null
-  host_bio: string | null
-  host_instagram: string | null
-  host_twitter: string | null
-  host_selfie_url: string | null
-  host_location: string | null
   starts_at: string | null
   ends_at: string | null
   scheduled_start_at: string | null

@@ -29,16 +29,42 @@ export default function ShowPage({ params }: { params: Promise<{ eventId: string
       const supabase = createClient()
 
       // Load event
-      const { data: event } = await supabase
+      const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('id', eventId)
         .single()
 
-      if (!event) {
+      if (!eventData) {
         clearLocalSession()
         router.push('/')
         return
+      }
+
+      // Check if live event has expired and auto-end it
+      let event = eventData
+      if (eventData.status === 'live') {
+        const nowTime = Date.now()
+        let expired = false
+        if (eventData.ends_at) {
+          expired = new Date(eventData.ends_at).getTime() < nowTime
+        } else if (eventData.starts_at) {
+          expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < nowTime
+        } else {
+          expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < nowTime
+        }
+
+        if (expired) {
+          const { data: updatedEvent } = await supabase
+            .from('events')
+            .update({ status: 'ended' })
+            .eq('id', eventData.id)
+            .select()
+            .single()
+          if (updatedEvent) {
+            event = updatedEvent
+          }
+        }
       }
 
       if (event.status === 'ended') {

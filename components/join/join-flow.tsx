@@ -43,15 +43,6 @@ export function JoinFlow() {
   const [rejoinUsername, setRejoinUsername] = useState('')
   const [rejoinVibeKey, setRejoinVibeKey] = useState('')
 
-  // Check for existing session
-  useEffect(() => {
-    const session = getLocalSession()
-    if (session && initialCode) {
-      // If they have a session for this event, go to show
-      router.push(`/show/${session.eventId}`)
-    }
-  }, [initialCode, router])
-
   // Auto-validate code from URL
   useEffect(() => {
     if (initialCode && !event) {

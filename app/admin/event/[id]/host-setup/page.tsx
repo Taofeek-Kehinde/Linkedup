@@ -61,8 +61,6 @@ export default function HostSetupPage() {
       }
 
       setEvent(eventData)
-      setHostName(eventData.show_name || '')
-      setHostLocation(eventData.host_location || '')
       setIsLoading(false)
     }
 
@@ -195,31 +193,11 @@ export default function HostSetupPage() {
     setIsSaving(true)
     setError(null)
 
-    let selfiePath = event.host_selfie_url
-    if (selfieBlob) {
-      const uploaded = await uploadSelfie(selfieBlob)
-      if (uploaded) selfiePath = uploaded
-    }
-
     const supabase = createClient()
-    const { error: updateError } = await supabase
-      .from('events')
-      .update({
-        host_name: hostName.trim() || null,
-        host_location: hostLocation || null,
-        host_selfie_url: selfiePath,
-      })
-      .eq('id', event.id)
-
-    if (updateError) {
-      setError(updateError.message)
-      setIsSaving(false)
-      return
-    }
 
     if (event.status !== 'live') {
       const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
-      await supabase
+      const { error: startError } = await supabase
         .from('events')
         .update({
           status: 'live',
@@ -227,6 +205,12 @@ export default function HostSetupPage() {
           ends_at: endTime,
         })
         .eq('id', event.id)
+
+      if (startError) {
+        setError(startError.message)
+        setIsSaving(false)
+        return
+      }
     }
 
     router.push(`/show/${event.id}`)

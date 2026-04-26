@@ -336,41 +336,6 @@ async function startEvent() {
     }
   }
 
-  // Host profile setup
-  const [showHostSetup, setShowHostSetup] = useState(false)
-  const [hostName, setHostName] = useState('')
-  const [hostBio, setHostBio] = useState('')
-  const [hostInstagram, setHostInstagram] = useState('')
-  const [hostTwitter, setHostTwitter] = useState('')
-
-  async function saveHostProfile() {
-    if (!event) return
-    setIsUpdating(true)
-
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('events')
-      .update({
-        host_name: hostName.trim() || null,
-        host_bio: hostBio.trim() || null,
-        host_instagram: hostInstagram.trim() || null,
-        host_twitter: hostTwitter.trim() || null,
-      })
-      .eq('id', event.id)
-
-    if (!error) {
-      setEvent({
-        ...event,
-        host_name: hostName.trim() || null,
-        host_bio: hostBio.trim() || null,
-        host_instagram: hostInstagram.trim() || null,
-        host_twitter: hostTwitter.trim() || null,
-      })
-      setShowHostSetup(false)
-    }
-    setIsUpdating(false)
-  }
-
   function copyCode() {
     if (!event) return
     navigator.clipboard.writeText(event.event_code)
