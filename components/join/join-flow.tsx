@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
 import Image from 'next/image'
-import { ArrowRight, ArrowLeft, RefreshCw, UserCheck } from 'lucide-react'
+import { ArrowRight, ArrowLeft, RefreshCw, UserCheck, MapPin } from 'lucide-react'
 import { getLocalSession, setLocalSession } from '@/lib/utils/session'
 import { generateEventUsernameClient } from '@/lib/utils/generate-username'
 import { generateVibeKey } from '@/lib/utils/generate-vibe-key'
@@ -19,7 +19,7 @@ import { SelfieCapture } from '@/components/join/selfie-capture'
 import Link from 'next/link'
 import type { Event, UserSession } from '@/lib/types'
 
-type Step = 'code' | 'identity' | 'selfie'
+type Step = 'code' | 'identity' | 'location' | 'selfie'
 
 export function JoinFlow() {
   const router = useRouter()
@@ -38,6 +38,7 @@ export function JoinFlow() {
   const [username, setUsername] = useState('')
   const [vibeKey, setVibeKey] = useState('')
   const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string>('')
   
   // Rejoin form
   const [rejoinUsername, setRejoinUsername] = useState('')
@@ -150,6 +151,16 @@ export function JoinFlow() {
     router.push(`/show/${event.id}`)
   }
 
+  function proceedToLocation() {
+    // If event has multiple locations, show location selection
+    if (event?.locations && event.locations.length > 1) {
+      setStep('location')
+    } else {
+      // Skip location step for single-location or no-location events
+      setStep('selfie')
+    }
+  }
+
   function proceedToSelfie() {
     setStep('selfie')
   }
@@ -196,6 +207,7 @@ export function JoinFlow() {
           selfie_url: selfieUrl,
           session_token: sessionToken,
           is_upgraded: false,
+          location: selectedLocation || null,
         })
         .select()
         .single()
@@ -352,13 +364,13 @@ export function JoinFlow() {
                     <p className="text-sm text-destructive text-center">{error}</p>
                   )}
 
-                  <Button onClick={proceedToSelfie} className="w-full" disabled={isLoading}>
+                  <Button onClick={proceedToLocation} className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <Spinner className="mr-2" />
                     ) : (
                       <ArrowRight className="mr-2 h-4 w-4" />
                     )}
-                    Continue to Selfie
+                    Continue
                   </Button>
                 </TabsContent>
 
@@ -415,12 +427,79 @@ export function JoinFlow() {
     )
   }
 
+  if (step === 'location') {
+    return (
+      <main className="min-h-dvh flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          {/* Event Info */}
+          <div className="text-center space-y-1">
+            <p className="text-sm text-muted-foreground">Joining</p>
+            <h1 className="text-2xl font-bold text-foreground">{event?.show_name}</h1>
+            <p className="text-sm font-mono text-primary">{event?.event_code}</p>
+          </div>
+
+          {/* Location Selection Card */}
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="text-center">
+              <CardTitle className="text-foreground flex items-center justify-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Select Your Location
+              </CardTitle>
+              <CardDescription>
+                Choose where you are at this event. You will only see people at the same location.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                {event?.locations?.map((loc) => (
+                  <Button
+                    key={loc}
+                    variant={selectedLocation === loc ? 'default' : 'outline'}
+                    className="w-full h-14 text-lg justify-start px-4"
+                    onClick={() => setSelectedLocation(loc)}
+                  >
+                    <MapPin className="mr-3 h-5 w-5" />
+                    {loc}
+                  </Button>
+                ))}
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive text-center">{error}</p>
+              )}
+
+              <Button 
+                onClick={proceedToSelfie} 
+                className="w-full" 
+                disabled={isLoading || !selectedLocation}
+              >
+                {isLoading ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                )}
+                Continue to Selfie
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="text-center">
+            <Button variant="ghost" className="text-muted-foreground" onClick={() => setStep('identity')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   if (step === 'selfie') {
     return (
       <SelfieCapture
         username={username}
         onCapture={handleSelfieComplete}
-        onBack={() => setStep('identity')}
+        onBack={() => setStep(event?.locations && event.locations.length > 1 ? 'location' : 'identity')}
         isLoading={isLoading}
         error={error}
       />
@@ -429,3 +508,4 @@ export function JoinFlow() {
 
   return null
 }
+

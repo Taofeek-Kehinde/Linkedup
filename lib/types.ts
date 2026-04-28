@@ -24,6 +24,7 @@ export interface EventUser {
   is_upgraded: boolean
   is_vip: boolean
   auth_user_id: string | null
+  location: string | null
   created_at: string
 }
 

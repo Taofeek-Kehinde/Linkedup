@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -12,25 +12,25 @@ import { Label } from '@/components/ui/label'
 import { 
   ArrowLeft, 
   Play, 
-  Copy, 
-  Check, 
   Users, 
   Clock, 
   MapPin,
   QrCode as QrCodeIcon,
-  Share2,
-  RefreshCw,
   Plus, 
   Edit3, 
   Trash2,
   CalendarDays,
-  Save
+  Save,
+  Crown,
+  Eye,
+  Ticket,
+  Sparkles,
+  Download,
+  RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Event, EventUser } from '@/lib/types'
-import { useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Download } from 'lucide-react'
 
 export default function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -73,14 +73,12 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     async function loadEvent() {
       const supabase = createClient()
       
-      // Check auth
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/admin')
         return
       }
 
-      // Load event
       const { data: eventData } = await supabase
         .from('events')
         .select('*')
@@ -93,7 +91,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         return
       }
 
-      // Check if live event has expired and auto-end it
       let eventToUse = eventData
       if (eventData.status === 'live') {
         const nowTime = Date.now()
@@ -125,7 +122,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       setEditScheduledStartAt(eventToUse.scheduled_start_at ? new Date(eventToUse.scheduled_start_at) : null)
       setEditDurationHours(eventToUse.duration_hours.toString())
 
-      // Load users
       const { data: usersData } = await supabase
         .from('event_users')
         .select('*')
@@ -139,7 +135,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     loadEvent()
   }, [id, router])
 
-  // Real-time subscription for users
   useEffect(() => {
     if (!event) return
 
@@ -165,7 +160,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     }
   }, [event, id])
 
-  // Countdown timer for live events
   useEffect(() => {
     if (!event || event.status !== 'live') return
 
@@ -186,7 +180,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
       if (remaining <= 0) {
         setTimeRemaining('Event ended')
-        // Update event status to ended in DB and local state
         const supabase = createClient()
         const { data: updatedEvent } = await supabase
           .from('events')
@@ -214,7 +207,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     return () => clearInterval(interval)
   }, [event])
 
-  // Upcoming event countdown + auto-refresh when start time arrives
   useEffect(() => {
     if (!event || event.status !== 'upcoming' || !event.scheduled_start_at) return
 
@@ -225,7 +217,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
       if (remaining <= 0) {
         setUpcomingCountdown('Starting now...')
-        // Auto-refresh to pick up status change
         window.location.reload()
         return
       }
@@ -301,12 +292,12 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     setIsUpdating(false)
   }
 
-async function startEvent() {
+  async function startEvent() {
     if (!event) return
     setIsUpdating(true)
 
     const supabase = createClient()
-    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString() // 6 hours from now
+    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
     const { data, error } = await supabase
       .from('events')
       .update({ 
@@ -370,7 +361,7 @@ async function startEvent() {
     )
   }
 
-  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code}`
+  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event?.event_code || ''}`
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -405,7 +396,6 @@ async function startEvent() {
             onClick={() => {
               setIsEditing(!isEditing)
               if (!isEditing) {
-                // Load current values for edit
                 setEditShowName(event.show_name)
                 setEditLocations(event.locations || [])
                 setEditScheduledStartAt(event.scheduled_start_at ? new Date(event.scheduled_start_at) : null)

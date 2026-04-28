@@ -14,7 +14,8 @@ import {
   Clock, 
   LogOut, 
   ChevronLeft, 
-  ChevronRight
+  ChevronRight,
+  MapPin
 } from 'lucide-react'
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
@@ -39,16 +40,24 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   // Load users
   const loadUsers = useCallback(async () => {
     const supabase = createClient()
-    const { data, count } = await supabase
+    
+    // Build query dynamically
+    let query = supabase
       .from('event_users')
       .select('*', { count: 'exact' })
       .eq('event_id', event.id)
       .neq('id', currentUser.id)
-      .order('created_at', { ascending: false })
+    
+    // For multi-location events, only show users at the same location
+    if (event.locations && event.locations.length > 1 && currentUser.location) {
+      query = query.eq('location', currentUser.location)
+    }
+    
+    const { data, count } = await query.order('created_at', { ascending: false })
 
     setUsers(data || [])
     setUserCount((count || 0) + 1) // Include self
-  }, [event.id, currentUser.id])
+  }, [event.id, currentUser.id, event.locations, currentUser.location])
 
   // Load chats
   const loadChats = useCallback(async () => {
@@ -203,6 +212,12 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 <Users className="h-3 w-3" />
                 <span>{userCount} here</span>
               </div>
+              {event.locations && event.locations.length > 1 && currentUser.location && (
+                <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                  <MapPin className="h-3 w-3" />
+                  <span>{currentUser.location}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1 text-sm font-mono font-bold text-primary">
                 <Clock className="h-4 w-4" />
                 <span>{timeRemaining}</span>
@@ -344,3 +359,4 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     </main>
   )
 }
+
