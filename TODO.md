@@ -23,4 +23,11 @@ Timer features:
 
 Files updated: app/show/[eventId]/chat/[chatId]/page.tsx
 
-Test: Navigate to a live event chat - timer appears immediately at top, counts down visibly while chatting.
+**New Task Started: Message Notifications**
+- [✅] Added Web Audio beep (800Hz sine, 200ms) + browser Notification popup for incoming messages only (non-own, via realtime payload)
+  - Detects sender_id !== session.eventUserId
+  - Auto-requests Notification permission
+  - Beep on every incoming, Notification if permitted
+  - useCallback for perf, no deps issues
+
+Test: Open chat in 2 tabs/sessions/devices, send msg → hear beep + popup on receiver.
