@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { Clock } from 'lucide-react'
+import type { Chat, EventUser, Message, UserSession, Event } from '@/lib/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +18,6 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { ArrowLeft, Send, User, Sticker } from 'lucide-react'
-import type { Chat, EventUser, Message, UserSession } from '@/lib/types'
 
 export default function ChatPage() {
   const params = useParams()
@@ -35,6 +36,8 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
+  const [event, setEvent] = useState<Event | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState('')
 
   // Load initial data
   useEffect(() => {
@@ -87,6 +90,14 @@ export default function ChatPage() {
         .order('created_at', { ascending: true })
 
       setMessages(messagesData || [])
+      // Load event
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single()
+      setEvent(eventData)
+
       setIsLoading(false)
     }
 
@@ -118,6 +129,48 @@ export default function ChatPage() {
       supabase.removeChannel(channel)
     }
   }, [chat, chatId])
+
+  // Live event timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    const updateTimer = () => {
+      if (!event) {
+        setTimeRemaining('')
+        return
+      }
+
+      const now = Date.now()
+      let endTime = 0
+
+      if (event.ends_at) {
+        endTime = new Date(event.ends_at).getTime()
+      } else {
+        const createdTime = new Date(event.created_at).getTime()
+        endTime = createdTime + (event.duration_hours * 60 * 60 * 1000)
+      }
+
+      const remaining = endTime - now
+      if (remaining <= 0) {
+        setTimeRemaining('Event ended')
+        return
+      }
+
+      const hours = Math.floor(remaining / (1000 * 60 * 60))
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+      setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`)
+    }
+
+    if (event) {
+      updateTimer()
+      interval = setInterval(updateTimer, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [event])
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -172,7 +225,17 @@ export default function ChatPage() {
   return (
     <main className="min-h-dvh flex flex-col bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
+        {/* Timer row at very top */}
+        {event && timeRemaining && (
+          <div className="w-full p-3 bg-gradient-to-r from-primary/20 to-primary/10 border-b border-primary/30">
+            <div className="flex items-center justify-center gap-2 text-primary-foreground font-mono font-bold text-lg">
+              <Clock className="h-5 w-5" />
+              <span>{timeRemaining}</span>
+            </div>
+          </div>
+        )}
+        {/* Partner header */}
         <div className="flex items-center gap-3 p-4">
           <Button variant="ghost" size="icon" onClick={() => router.push(`/show/${eventId}`)}>
             <ArrowLeft className="h-5 w-5" />

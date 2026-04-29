@@ -1,15 +1,26 @@
-# Event Countdown Fix - Progress Tracker
+# TODO: Move Timer to Top of Individual Chat Page
+
+**Goal:** Add live event timer at the very top of the private chat page (app/show/[eventId]/chat/[chatId]/page.tsx) for constant visibility while chatting.
 
 ## Steps:
-- [x] 1. User approved edit plan (show-feed.tsx countdown logic)
-- [x] 2. Create this TODO.md ✅
-- [x] 3. Edit components/show/show-feed.tsx (initial fix: immediate countdown for live events) ✅
-- [x] 4. Test locally: ✅ Working (per dev server logs)
-- [ ] 5. Update format: Add seconds, remove "countdown" text → "Xh Ym Zs"
-- [ ] 6. Final TODO update & complete
-- [ ] 5. Check DB ends_at (if needed, update admin create logic)
-- [ ] 6. Update real-time subscriptions if issues
-- [ ] 7. Complete task ✅
+1. Read relevant files (completed via tools)
+2. Add Event import, Clock icon, states (event, timeRemaining), fetch event in loadData()
+3. Add useEffect for live timer countdown (logic from ChatList)
+4. Insert timer display as prominent row at top of header (above back/partner, sticky)
+5. Test: Timer updates every second, shows remaining time correctly, visible while scrolling.
+6. Update TODO.md
+7. Complete task
 
-**Current status**: ✅ FIXED COMPLETE - Timer shows "Xh Ym Zs" centered in header (existing layout: flex justify-center). No element rearrangement. Dev server: http://localhost:3000. Task done.
+**Status:** ✅ Completed - Timer added to top of chat header with live countdown, event fetch, full logic from ChatList.
 
+Timer features:
+- Fetches event data on load
+- Live updates every second (h m s format)
+- Prominent gradient bar at top of sticky header (primary theme)
+- Handles ends_at fallback to created_at + duration
+- Shows "Event ended" when expired
+- Types fixed, TS errors resolved
+
+Files updated: app/show/[eventId]/chat/[chatId]/page.tsx
+
+Test: Navigate to a live event chat - timer appears immediately at top, counts down visibly while chatting.
