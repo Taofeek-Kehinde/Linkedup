@@ -155,12 +155,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   }
 
   async function handleStartChat(targetUser: EventUser) {
-    // Check chat limit
-    if (chats.length >= 6 && !currentUser.is_upgraded) {
-      // Redirect to upgrade flow
-      router.push(`/show/${event.id}/upgrade`)
-      return
-    }
+    // No chat limit - unlimited per location
 
     const supabase = createClient()
 
@@ -270,9 +265,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               )}
             </div>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {chats.length}/6 chats
-          </Badge>
+          {/* Removed chat limit badge - unlimited chats per location */}
         </div>
       </header>
 
@@ -282,6 +275,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
           chats={chats} 
           currentUser={currentUser}
           eventId={event.id}
+          event={event}
           onClose={() => setShowChats(false)}
         />
       ) : (
@@ -331,7 +325,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 <UserCard 
                   user={currentViewUser} 
                   onChat={() => handleStartChat(currentViewUser)}
-                  canChat={chats.length < 6 || currentUser.is_upgraded}
+                  canChat={true}
                 />
               )}
 

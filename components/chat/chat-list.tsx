@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { X, MessageCircle, ChevronRight } from 'lucide-react'
+import { X, MessageCircle, ChevronRight, Clock } from 'lucide-react'
+import type { Event } from '@/lib/types'
 import type { Chat, EventUser } from '@/lib/types'
 
 interface ChatListProps {
   chats: Chat[]
   currentUser: EventUser
   eventId: string
+  event: Event
   onClose: () => void
 }
 
@@ -20,7 +22,37 @@ interface ChatWithPartner extends Chat {
   lastMessage?: string
 }
 
-export function ChatList({ chats, currentUser, eventId, onClose }: ChatListProps) {
+export function ChatList({ chats, currentUser, eventId, event, onClose }: ChatListProps) {
+  const [timeRemaining, setTimeRemaining] = useState('')
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (event.status === 'live') {
+      const updateTimer = () => {
+        const now = Date.now()
+        let endTime = 0
+        if (event.ends_at) {
+          endTime = new Date(event.ends_at).getTime()
+        } else {
+          const createdTime = new Date(event.created_at).getTime()
+          endTime = createdTime + (event.duration_hours * 60 * 60 * 1000)
+        }
+        const remaining = endTime - now
+        if (remaining <= 0) {
+          setTimeRemaining('Event ended')
+          return
+        }
+        const hours = Math.floor(remaining / (1000 * 60 * 60))
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+        setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`)
+      }
+      updateTimer()
+      interval = setInterval(updateTimer, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [event])
+
   const router = useRouter()
   const [chatsWithPartners, setChatsWithPartners] = useState<ChatWithPartner[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -123,11 +155,12 @@ export function ChatList({ chats, currentUser, eventId, onClose }: ChatListProps
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-4 border-t border-border/50">
-        <p className="text-xs text-center text-muted-foreground">
-          {chatsWithPartners.length}/6 chats used
-        </p>
+      {/* Live timer - same as show-feed */}
+      <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-sm font-mono font-bold text-primary text-center mx-auto">
+          <Clock className="h-4 w-4" />
+          <span>{timeRemaining || 'Loading...'}</span>
+        </div>
       </div>
     </div>
   )
