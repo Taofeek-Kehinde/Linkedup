@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, use } from 'react'
+import { use } from 'react'
+import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -21,20 +22,17 @@ import {
   Trash2,
   CalendarDays,
   Save,
-  Crown,
-  Eye,
-  Ticket,
-  Sparkles,
   Download,
   RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Event, EventUser } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
 
 export default function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
   const router = useRouter()
+  const { id } = use(params)
   const [event, setEvent] = useState<Event | null>(null)
   const [users, setUsers] = useState<EventUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -49,17 +47,79 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   const [editScheduledStartAt, setEditScheduledStartAt] = useState<Date | null>(null)
   const [editDurationHours, setEditDurationHours] = useState('6')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [isAutoStarting, setIsAutoStarting] = useState(false)
+  const [autoStartTriggered, setAutoStartTriggered] = useState(false)
   const qrRef = useRef<HTMLCanvasElement>(null)
+  
+  const { toast } = useToast()
+
+  const handleAutoStart = useCallback(async () => {
+    // Add null check for event
+    if (!event || isAutoStarting || autoStartTriggered) return
+    
+    console.log('Auto-start triggered for event:', event.id)
+    setIsAutoStarting(true)
+    setAutoStartTriggered(true)
+
+    try {
+      const supabase = createClient()
+      const now = new Date().toISOString()
+      const endTime = new Date(Date.now() + (event.duration_hours * 60 * 60 * 1000)).toISOString()
+      
+      const { data: updatedEvent, error } = await supabase
+        .from('events')
+        .update({ 
+          status: 'live', 
+          starts_at: now,
+          ends_at: endTime,
+          scheduled_start_at: null
+        })
+        .eq('id', event.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error auto-starting event:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to auto-start the event. Please try manually.',
+          variant: 'destructive'
+        })
+        setAutoStartTriggered(false)
+        return
+      }
+
+      if (updatedEvent) {
+        setEvent(updatedEvent)
+        toast({
+          title: 'Event Started!',
+          description: 'Live mode activated automatically.'
+        })
+        
+        setUpcomingCountdown(null)
+      }
+    } catch (error) {
+      console.error('Auto-start error:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to auto-start the event. Please try manually.',
+        variant: 'destructive'
+      })
+      setAutoStartTriggered(false)
+    } finally {
+      setIsAutoStarting(false)
+    }
+  }, [event, isAutoStarting, autoStartTriggered, toast])
 
   const downloadQR = () => {
-    if (qrRef.current) {
+    if (qrRef.current && event) {
       const canvas = qrRef.current
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob)
           const link = document.createElement('a')
           link.href = url
-          link.download = `LinkedUp-${event?.event_code || 'QR'}.png`
+          link.download = `LinkedUp-${event.event_code || 'QR'}.png`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
@@ -207,17 +267,31 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     return () => clearInterval(interval)
   }, [event])
 
+  // Upcoming countdown effect with proper cleanup and prevent multiple triggers
   useEffect(() => {
     if (!event || event.status !== 'upcoming' || !event.scheduled_start_at) return
-
+    
+    setAutoStartTriggered(false)
+    
+    let intervalId: NodeJS.Timeout
+    let timeoutId: NodeJS.Timeout
+    
     function updateCountdown() {
-      const startTime = new Date(event!.scheduled_start_at!).getTime()
+      if (!event || !event.scheduled_start_at) return
+      
+      const startTime = new Date(event.scheduled_start_at).getTime()
       const now = Date.now()
       const remaining = startTime - now
 
-      if (remaining <= 0) {
+      if (remaining <= 0 && !autoStartTriggered) {
+        if (intervalId) clearInterval(intervalId)
+        
         setUpcomingCountdown('Starting now...')
-        window.location.reload()
+        
+        timeoutId = setTimeout(() => {
+          handleAutoStart()
+        }, 100)
+        
         return
       }
 
@@ -227,7 +301,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
 
       if (days > 0) {
-        setUpcomingCountdown(`${days}d ${hours}h ${minutes}m`)
+        setUpcomingCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`)
       } else {
         setUpcomingCountdown(
           `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
@@ -236,9 +310,13 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     }
 
     updateCountdown()
-    const interval = setInterval(updateCountdown, 1000)
-    return () => clearInterval(interval)
-  }, [event])
+    intervalId = setInterval(updateCountdown, 1000)
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [event, handleAutoStart, autoStartTriggered])
 
   const addEditLocation = () => {
     if (editNewLocation.trim()) {
@@ -288,6 +366,16 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         duration_hours: parseInt(editDurationHours)
       })
       setIsEditing(false)
+      toast({
+        title: 'Success',
+        description: 'Event details updated successfully.'
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Failed to update event details.',
+        variant: 'destructive'
+      })
     }
     setIsUpdating(false)
   }
@@ -297,13 +385,14 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     setIsUpdating(true)
 
     const supabase = createClient()
-    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+    const endTime = new Date(Date.now() + event.duration_hours * 60 * 60 * 1000).toISOString()
     const { data, error } = await supabase
       .from('events')
       .update({ 
         status: 'live', 
         starts_at: new Date().toISOString(),
-        ends_at: endTime 
+        ends_at: endTime,
+        scheduled_start_at: null
       })
       .eq('id', event.id)
       .select()
@@ -311,6 +400,16 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
     if (!error && data) {
       setEvent(data)
+      toast({
+        title: 'Event Started!',
+        description: 'Event is now live.'
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Failed to start event.',
+        variant: 'destructive'
+      })
     }
     setIsUpdating(false)
   }
@@ -324,6 +423,10 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
     if (!error) {
       setUsers(users.map(u => u.id === user.id ? { ...u, is_vip: !u.is_vip } : u))
+      toast({
+        title: 'Success',
+        description: `${user.username} ${!user.is_vip ? 'is now a VIP' : 'is no longer a VIP'}`
+      })
     }
   }
 
@@ -332,6 +435,10 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     navigator.clipboard.writeText(event.event_code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+    toast({
+      title: 'Copied!',
+      description: 'Event code copied to clipboard.'
+    })
   }
 
   async function shareEvent() {
@@ -361,7 +468,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     )
   }
 
-  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event?.event_code || ''}`
+  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code || ''}`
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -438,19 +545,14 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                   <Download className="mr-2 h-4 w-4" />
                   Download QR
                 </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={shareEvent}
+                >
+                  Share Event
+                </Button>
               </div>
-
-              {isEditing && (
-                <div className="flex gap-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
-                    Cancel
-                  </Button>
-                  <Button onClick={saveEdit} disabled={isUpdating} className="flex-1">
-                    {isUpdating ? <Spinner className="mr-2" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
@@ -471,9 +573,11 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground mb-1">Starts In</p>
               <p className="text-3xl font-mono font-bold text-yellow-400">{upcomingCountdown}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Event will start automatically
-              </p>
+              {isAutoStarting && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Starting event...
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -539,15 +643,16 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Duration</Label>
+                  <Label>Duration (hours)</Label>
                   <Input
                     type="number"
                     value={editDurationHours}
                     onChange={(e) => setEditDurationHours(e.target.value)}
                     min="1"
+                    max="24"
                     className="bg-input"
                   />
-                  <p className="text-xs text-muted-foreground">Hours</p>
+                  <p className="text-xs text-muted-foreground">Hours (1-24)</p>
                 </div>
 
                 <Button onClick={saveEdit} className="w-full" disabled={isUpdating}>
@@ -618,6 +723,21 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
               SET UP HOST EVENT
             </Button>
           )}
+          {event.status === 'upcoming' && (
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={startEvent}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <Spinner className="mr-2" />
+              ) : (
+                <Play className="mr-2 h-5 w-5" />
+              )}
+              Start Event Now
+            </Button>
+          )}
           {event.status === 'ended' && (
             <Button 
               className="w-full" 
@@ -640,7 +760,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Participants</h2>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
@@ -664,7 +784,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                       <p className="text-xs text-muted-foreground font-mono">{user.vibe_key}</p>
                     </div>
                     {user.is_vip && (
-                      <img src="/tick.png" alt="VIP" className="w-5 h-5" />
+                      <Badge variant="default" className="text-xs bg-yellow-500">VIP</Badge>
                     )}
                     {user.is_upgraded && (
                       <Badge variant="secondary" className="text-xs">Upgraded</Badge>
@@ -673,7 +793,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleVip(user)}
-                      className={user.is_vip ? 'text-primary' : 'text-muted-foreground'}
+                      className={user.is_vip ? 'text-yellow-500' : 'text-muted-foreground'}
                     >
                       {user.is_vip ? 'Remove VIP' : 'Make VIP'}
                     </Button>
@@ -687,4 +807,3 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     </main>
   )
 }
-
