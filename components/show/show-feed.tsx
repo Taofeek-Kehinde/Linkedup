@@ -281,7 +281,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       ) : (
         <div className="flex-1 flex flex-col">
           {users.length === 0 ? (
-            // Empty state
+            // Empty state - removed text
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-20 h-20 rounded-full bg-primary/10 p-3 flex items-center justify-center mb-4 overflow-hidden">
                 <Image 
@@ -292,8 +292,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                   className="object-contain"
                 />
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">You&apos;re the first one here!</h2>
-              {/* Event code removed entirely */}
+              {/* Text removed, logo only */}
             </div>
           ) : (
             // User cards
