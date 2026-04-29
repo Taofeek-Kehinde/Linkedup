@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Badge } from '@/components/ui/badge' 
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { Badge } from '@/components/ui/badge'
 import { Crown, MapPin, Clock, Eye, EyeOff } from 'lucide-react'
 import type { Event, EventUser } from '@/lib/types'
 
+// Define the props interface
 interface HosterProps {
   eventId: string
   hostSelfieUrl: string
@@ -92,22 +93,24 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
   }, [event])
 
   const handleHostClick = () => {
-    // Handle host functionality
+    // Handle host functionality - could open host controls or settings
     console.log('Host button clicked')
+    // You can add navigation or modal opening here
   }
 
   const handleVipClick = () => {
     setIsVipMode(!isVipMode)
     // Toggle VIP mode functionality
+    // This could filter who appears on screen or change UI behavior
   }
 
   const handlePass = () => {
-    // Handle pass action
+    // Handle pass action - skip current profile
     console.log('Pass clicked')
   }
 
   const handlePeep = () => {
-    // Handle peep action
+    // Handle peep action - show interest in current profile
     console.log('Peep clicked')
   }
 
@@ -144,7 +147,7 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
       
       <div className="relative z-10 flex flex-col h-dvh pt-8 pb-16 px-6">
         {/* Top Header */}
-        <div className="text-center mb-12 animate-fade-in-down">
+        <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent tracking-tight mb-2">
             CANDY &amp; CLASSY
           </h1>
@@ -219,22 +222,6 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
           </Button>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in-down {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in-down {
-          animation: fade-in-down 0.5s ease-out;
-        }
-      `}</style>
     </main>
   )
 }
