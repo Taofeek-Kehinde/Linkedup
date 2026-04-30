@@ -24,13 +24,13 @@ export async function POST(request: NextRequest) {
     // Deterministic filename so each user's selfie is their profile picture
     const filename = `selfies/${eventId}/${sanitizedUsername}.jpg`
 
-    // Upload to Vercel Blob (private access)
+    // Upload to Vercel Blob (public access so images can be viewed)
     const blob = await put(filename, file, {
-      access: 'private',
+      access: 'public', // Changed from 'private' to 'public'
     })
 
-    // Return pathname for private blob access
-    return NextResponse.json({ pathname: blob.pathname })
+    // Return the full URL for direct image access
+    return NextResponse.json({ url: blob.url, pathname: blob.pathname })
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
