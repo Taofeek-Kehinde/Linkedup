@@ -1,5 +1,5 @@
-import { put } from '@vercel/blob'
-import { type NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,27 +10,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Get user identity for deterministic filename
     const eventId = (formData.get('eventId') as string) || 'unknown'
     const username = (formData.get('username') as string) || 'unknown'
 
-    // Sanitize username for safe filesystem use
     const sanitizedUsername = username
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '')
       .substring(0, 40) || 'user'
 
-    // Deterministic filename so each user's selfie is their profile picture
-    const filename = `selfies/${eventId}/${sanitizedUsername}.jpg`
+    const timestamp = Date.now()
+    const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}.jpg`
+    
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
 
-    // Upload to Vercel Blob (public access so images can be viewed)
-    const blob = await put(filename, file, {
-      access: 'public', // Changed from 'private' to 'public'
-    })
+    // Create supabase client
+    const supabase = await createClient()
+    
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('selfies')
+      .upload(filename, buffer, {
+        contentType: file.type,
+        upsert: true,
+      })
 
-    // Return the full URL for direct image access
-    return NextResponse.json({ url: blob.url, pathname: blob.pathname })
+    if (uploadError) {
+      console.error('Upload error:', uploadError)
+      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('selfies')
+      .getPublicUrl(filename)
+
+    return NextResponse.json({ url: urlData.publicUrl })
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
