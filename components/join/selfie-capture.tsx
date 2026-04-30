@@ -25,7 +25,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
 
   const startCamera = useCallback(async () => {
-  if (streamRef.current) return // ✅ prevent duplicate starts
+  if (streamRef.current) return 
 
   try {
     setCameraError(null)
@@ -109,12 +109,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
     }, 'image/jpeg', 0.8)
   }
 
-  function skipSelfie() {
-    stopCamera()
-    onCapture(null)
-  }
-
-  function toggleCamera() {
+function toggleCamera() {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user')
   }
 
@@ -213,7 +208,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
         {/* Hidden canvas for capture */}
         <canvas ref={canvasRef} className="hidden" />
 
-        {/* Actions */}
+{/* Actions - Selfie is now REQUIRED */}
         {capturedImage ? (
           <div className="space-y-3">
             {error && (
@@ -239,14 +234,9 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
-            <Button variant="ghost" className="w-full" onClick={skipSelfie} disabled={isLoading}>
-              {isLoading ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <X className="mr-2 h-4 w-4" />
-              )}
-              Skip for now
-            </Button>
+            <p className="text-sm text-muted-foreground text-center">
+              Take a photo to continue
+            </p>
           </div>
         )}
 
