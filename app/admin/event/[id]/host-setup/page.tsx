@@ -141,8 +141,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
     )
   }
 
-  return (
-    <main className="h-dvh w-full overflow-hidden relative">
+return (
+    <main className="fixed inset-0 w-full overflow-hidden">
       {/* Background with host selfie */}
       {hostSelfieUrl ? (
         <>
