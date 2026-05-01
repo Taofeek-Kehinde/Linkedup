@@ -159,9 +159,9 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       
       {/* Content - Fixed height, no scrolling */}
-      <div className="relative z-10 h-full flex flex-col justify-between py-8 px-6">
-        {/* Header Section */}
-        <div className="text-center">
+      <div className="relative z-10 h-full flex flex-col px-6">
+        {/* Header Section - At the very top */}
+        <div className="text-center pt-6 flex-shrink-0">
           <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
             CANDY &amp; CLASSY
           </h1>
@@ -176,9 +176,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
 
-        {/* Middle Section - 3 Circle Buttons with white background container */}
-        <div className="flex justify-center items-center">
-          {/* White background container for the 3 circles */}
+        {/* VIP, Timer, Host - Right after location at the top */}
+        <div className="flex justify-center items-center mt-6 flex-shrink-0">
           <div className="bg-white/10 backdrop-blur-md rounded-[60px] p-2 flex gap-3 items-center">
             {/* VIP - Left */}
             <Button 
@@ -207,8 +206,11 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Bottom Buttons - PASS (Red) and PEEP (Green) with 50px border radius */}
-        <div className="flex gap-4 max-w-md mx-auto w-full">
+        {/* Spacer to push PASS and PEEP to bottom */}
+        <div className="flex-1"></div>
+
+        {/* Bottom Buttons - PASS and PEEP at the very bottom */}
+        <div className="flex gap-4 max-w-md mx-auto w-full pb-8 flex-shrink-0">
           <Button 
             onClick={handlePass}
             className="flex-1 h-16 rounded-[50px] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
