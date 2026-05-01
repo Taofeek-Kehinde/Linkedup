@@ -7,14 +7,15 @@ import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge' 
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { Crown, MapPin, Clock } from 'lucide-react'
+import { Crown, MapPin, Clock, User } from 'lucide-react'
 import type { Event, EventUser } from '@/lib/types'
 
 export default function HosterPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id: eventId } = use(params)
-  const [event, setEvent] = useState<Event | null>(null)
+const [event, setEvent] = useState<Event | null>(null)
   const [hostUser, setHostUser] = useState<EventUser | null>(null)
+  const [vipUsers, setVipUsers] = useState<EventUser[]>([])
   const [timeRemaining, setTimeRemaining] = useState('00:00:00')
   const [isLoading, setIsLoading] = useState(true)
   const [isVipMode, setIsVipMode] = useState(false)
@@ -50,8 +51,19 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
         .eq('auth_user_id', user.id)
         .single()
 
-      if (hostData) {
+if (hostData) {
         setHostUser(hostData)
+      }
+
+      // Load VIP users for this event
+      const { data: vipData } = await supabase
+        .from('event_users')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('is_vip', true)
+
+      if (vipData) {
+        setVipUsers(vipData)
       }
 
       setIsLoading(false)
@@ -176,7 +188,7 @@ return (
           )}
         </div>
 
-        {/* VIP, Timer, Host - Right after location at the top */}
+{/* VIP, Timer, Host - Right after location at the top */}
         <div className="flex justify-center items-center mt-6 flex-shrink-0">
           <div className="bg-white/10 backdrop-blur-md rounded-[60px] p-2 flex gap-3 items-center">
             {/* VIP - Left */}
@@ -206,11 +218,46 @@ return (
           </div>
         </div>
 
+        {/* VIP Users List - Shows when VIP button is active */}
+        {isVipMode && (
+          <div className="flex-1 overflow-y-auto mt-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Crown className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-400 font-bold">VIP ({vipUsers.length})</span>
+            </div>
+            {vipUsers.length > 0 ? (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {vipUsers.map((vip) => (
+                  <div 
+                    key={vip.id} 
+                    className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full pr-3 pl-1 py-1"
+                  >
+                    {vip.selfie_url ? (
+                      <img 
+                        src={vip.selfie_url} 
+                        alt={vip.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-yellow-500/50 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <span className="text-white text-sm font-medium">{vip.username}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-white/60 text-center text-sm">No VIPs yet</p>
+            )}
+          </div>
+        )}
+
         {/* Spacer to push PASS and PEEP to bottom */}
         <div className="flex-1"></div>
 
-        {/* Bottom Buttons - PASS and PEEP at the very bottom */}
-        <div className="flex gap-4 max-w-md mx-auto w-full pb-8 flex-shrink-0">
+{/* Bottom Buttons - PASS and PEEP - moved up slightly */}
+        <div className="flex gap-4 max-w-md mx-auto w-full pb-6 flex-shrink-0">
           <Button 
             onClick={handlePass}
             className="flex-1 h-16 rounded-[50px] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
