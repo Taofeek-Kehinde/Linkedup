@@ -77,7 +77,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   }, [eventId, router])
 
   const hostSelfieUrl = hostUser?.selfie_url || null
-  // Get the event location from locations array or single location
   const eventLocation = event?.locations?.[0] || event?.location || 'Venue'
 
   useEffect(() => {
@@ -208,17 +207,17 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Bottom Buttons - PASS (Red) and PEEP (Green) with 20% border radius */}
+        {/* Bottom Buttons - PASS (Red) and PEEP (Green) with 50px border radius */}
         <div className="flex gap-4 max-w-md mx-auto w-full">
           <Button 
             onClick={handlePass}
-            className="flex-1 h-16 rounded-[20%] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
+            className="flex-1 h-16 rounded-[50px] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
           >
             PASS
           </Button>
           <Button 
             onClick={handlePeep}
-            className="flex-1 h-16 rounded-[20%] bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-2xl transition-all duration-300 hover:scale-105"
+            className="flex-1 h-16 rounded-[50px] bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-2xl transition-all duration-300 hover:scale-105"
           >
             PEEP
           </Button>
