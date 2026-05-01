@@ -130,7 +130,7 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
 
   if (isLoading || !event) {
     return (
-      <main className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-black to-gray-900 overflow-hidden">
+      <main className="h-dvh flex items-center justify-center bg-gradient-to-br from-black to-gray-900">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4">
             <Crown className="w-8 h-8 text-white animate-pulse" />
@@ -142,7 +142,7 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <main className="h-screen w-screen overflow-hidden relative">
+    <main className="h-dvh w-full overflow-hidden relative">
       {/* Background with host selfie */}
       {hostSelfieUrl ? (
         <>
@@ -158,10 +158,10 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
       
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       
-      {/* Content - Full height, no padding top, perfectly spaced */}
-      <div className="relative z-10 h-full w-full flex flex-col px-6">
-        {/* Top Section - Header */}
-        <div className="text-center pt-4">
+      {/* Content - Fixed height, no scrolling */}
+      <div className="relative z-10 h-full flex flex-col justify-between py-6 px-6">
+        {/* Header Section - CANDY & CLASSY and Location */}
+        <div className="text-center">
           <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
             CANDY &amp; CLASSY
           </h1>
@@ -176,9 +176,9 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
 
-        {/* VIP, Timer, Host - Just below header */}
-        <div className="flex justify-center items-center mt-8">
-          <div className="bg-white/10 backdrop-blur-md rounded-full p-2 flex gap-3 items-center">
+        {/* VIP, Timer, Host - At the top right after location */}
+        <div className="flex justify-center items-center mt-6">
+          <div className="bg-white/10 backdrop-blur-md rounded-[60px] p-2 flex gap-3 items-center">
             {/* VIP - Left */}
             <Button 
               onClick={handleVipClick}
@@ -206,20 +206,20 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Flexible spacer to push buttons to bottom */}
+        {/* Spacer to push PASS and PEEP to bottom */}
         <div className="flex-1"></div>
 
-        {/* Bottom Buttons - PASS and PEEP with full rounded corners (50px all sides) */}
-        <div className="flex gap-4 w-full pb-8">
+        {/* Bottom Buttons - PASS (Red) and PEEP (Green) with 20% border radius */}
+        <div className="flex gap-4 max-w-md mx-auto w-full">
           <Button 
             onClick={handlePass}
-            className="flex-1 py-6 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
+            className="flex-1 h-16 rounded-[20%] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl transition-all duration-300"
           >
             PASS
           </Button>
           <Button 
             onClick={handlePeep}
-            className="flex-1 py-6 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-2xl transition-all duration-300 hover:scale-105"
+            className="flex-1 h-16 rounded-[20%] bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-2xl transition-all duration-300 hover:scale-105"
           >
             PEEP
           </Button>
