@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge' 
 import { Button } from '@/components/ui/button'
@@ -9,15 +10,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { Crown, MapPin, Clock, Eye, EyeOff } from 'lucide-react'
 import type { Event, EventUser } from '@/lib/types'
 
-interface HosterProps {
-  eventId: string
-  hostSelfieUrl: string
-  hostLocation: string
-}
-
-export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterProps) {
+export default function HosterPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  const { id: eventId } = use(params)
   const [event, setEvent] = useState<Event | null>(null)
+  const [hostUser, setHostUser] = useState<EventUser | null>(null)
   const [timeRemaining, setTimeRemaining] = useState('00:00:00')
   const [isLoading, setIsLoading] = useState(true)
   const [isVipMode, setIsVipMode] = useState(false)
@@ -26,15 +23,40 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
     async function loadEvent() {
       const supabase = createClient()
       
+      // Verify user is authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/admin')
+        return
+      }
+
+      // Fetch the event
       const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('id', eventId)
+        .eq('host_id', user.id)
         .single()
 
-      if (eventData) {
-        setEvent(eventData)
+      if (!eventData) {
+        router.push('/admin/dashboard')
+        return
       }
+
+      setEvent(eventData)
+
+      // Find the host user (event_user) for this event
+      const { data: hostData } = await supabase
+        .from('event_users')
+        .select('*')
+        .eq('event_id', eventId)
+        .eq('auth_user_id', user.id)
+        .single()
+
+      if (hostData) {
+        setHostUser(hostData)
+      }
+
       setIsLoading(false)
     }
 
@@ -56,7 +78,11 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, router])
+
+  // Get host info from event or host user
+  const hostSelfieUrl = hostUser?.selfie_url || null
+  const hostLocation = event?.location || (event?.locations && event.locations[0]) || ''
 
   useEffect(() => {
     if (!event) return
