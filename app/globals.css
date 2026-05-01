@@ -162,3 +162,20 @@
     animation: bg-zoom-fade 9s infinite 6s;
   }
 }
+
+
+
+/* Remove scrolling from body and html */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* Ensure no scrolling on any parent */
+#__next, main, div {
+  overflow: hidden;
+}
