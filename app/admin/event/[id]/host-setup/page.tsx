@@ -77,7 +77,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   }, [eventId, router])
 
   const hostSelfieUrl = hostUser?.selfie_url || null
-  // Get the event location from locations array or single location
   const eventLocation = event?.locations?.[0] || event?.location || 'Venue'
 
   useEffect(() => {
@@ -160,8 +159,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       
       {/* Content - Fixed height, no scrolling */}
-      <div className="relative z-10 h-full flex flex-col justify-between py-8 px-6">
-        {/* Header Section */}
+      <div className="relative z-10 h-full flex flex-col justify-between py-6 px-6">
+        {/* Header Section - CANDY & CLASSY and Location */}
         <div className="text-center">
           <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
             CANDY &amp; CLASSY
@@ -177,9 +176,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
 
-        {/* Middle Section - 3 Circle Buttons with white background container */}
-        <div className="flex justify-center items-center">
-          {/* White background container for the 3 circles */}
+        {/* VIP, Timer, Host - At the top right after location */}
+        <div className="flex justify-center items-center mt-6">
           <div className="bg-white/10 backdrop-blur-md rounded-[60px] p-2 flex gap-3 items-center">
             {/* VIP - Left */}
             <Button 
@@ -207,6 +205,9 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
             </Button>
           </div>
         </div>
+
+        {/* Spacer to push PASS and PEEP to bottom */}
+        <div className="flex-1"></div>
 
         {/* Bottom Buttons - PASS (Red) and PEEP (Green) with 20% border radius */}
         <div className="flex gap-4 max-w-md mx-auto w-full">
