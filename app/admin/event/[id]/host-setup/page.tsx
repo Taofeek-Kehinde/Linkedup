@@ -23,14 +23,12 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
     async function loadEvent() {
       const supabase = createClient()
       
-      // Verify user is authenticated
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/admin')
         return
       }
 
-      // Fetch the event
       const { data: eventData } = await supabase
         .from('events')
         .select('*')
@@ -45,7 +43,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
 
       setEvent(eventData)
 
-      // Find the host user (event_user) for this event
       const { data: hostData } = await supabase
         .from('event_users')
         .select('*')
@@ -62,7 +59,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
 
     loadEvent()
 
-    // Subscribe to event changes
     const supabase = createClient()
     const channel = supabase
       .channel(`event-${eventId}`)
@@ -80,7 +76,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
     }
   }, [eventId, router])
 
-  // Get host info from event or host user
   const hostSelfieUrl = hostUser?.selfie_url || null
   const hostLocation = event?.location || (event?.locations && event.locations[0]) || ''
 
@@ -118,22 +113,18 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   }, [event])
 
   const handleHostClick = () => {
-    // Handle host functionality
     console.log('Host button clicked')
   }
 
   const handleVipClick = () => {
     setIsVipMode(!isVipMode)
-    // Toggle VIP mode functionality
   }
 
   const handlePass = () => {
-    // Handle pass action
     console.log('Pass clicked')
   }
 
   const handlePeep = () => {
-    // Handle peep action
     console.log('Peep clicked')
   }
 
@@ -152,7 +143,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <main className="min-h-dvh relative overflow-hidden">
-      {/* Background - Host selfie */}
       {hostSelfieUrl ? (
         <>
           <div 
@@ -165,11 +155,9 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900" />
       )}
       
-      {/* Additional overlay for better text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       
       <div className="relative z-10 flex flex-col h-dvh pt-8 pb-16 px-6">
-{/* Top Header */}
         <div className="text-center mb-12 animate-fade-in-down">
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
             CANDY &amp; CLASSY
@@ -185,10 +173,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
 
-        {/* Middle Section */}
         <div className="flex-1 flex items-center justify-center mb-12">
           <div className="flex gap-4 max-w-md w-full">
-            {/* VIP Button */}
             <Button 
               size="lg" 
               onClick={handleVipClick}
@@ -198,7 +184,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
               VIP
             </Button>
 
-            {/* Timer + Host Button */}
             <div className="flex flex-col items-center gap-3 flex-1">
               <div className="text-2xl md:text-3xl font-mono font-black text-white bg-black/40 rounded-xl px-4 py-2 backdrop-blur-sm border border-white/20">
                 <Clock className="w-5 h-5 inline-block mr-2" />
@@ -213,7 +198,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
               </Button>
             </div>
 
-            {/* Third Button Placeholder - Could be for settings or info */}
             <Button 
               size="lg" 
               className="flex-1 h-20 rounded-2xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-lg shadow-2xl backdrop-blur-sm border-white/20"
@@ -224,7 +208,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-{/* Bottom Buttons */}
         <div className="flex gap-4 max-w-md mx-auto w-full">
           <Button 
             size="lg" 
