@@ -169,9 +169,9 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       
       <div className="relative z-10 flex flex-col h-dvh pt-8 pb-16 px-6">
-        {/* Top Header */}
+{/* Top Header */}
         <div className="text-center mb-12 animate-fade-in-down">
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent tracking-tight mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
             CANDY &amp; CLASSY
           </h1>
           <div className="flex items-center justify-center gap-2 text-sm md:text-base font-semibold text-white/90 mb-4">
@@ -224,13 +224,12 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Bottom Buttons */}
+{/* Bottom Buttons */}
         <div className="flex gap-4 max-w-md mx-auto w-full">
           <Button 
-            variant="outline" 
             size="lg" 
             onClick={handlePass}
-            className="flex-1 h-16 rounded-2xl text-white border-white/30 bg-white/10 backdrop-blur-sm hover:bg-white/20 hover:border-white/50 font-bold text-lg shadow-xl transition-all duration-300"
+            className="flex-1 h-16 rounded-[20%] bg-red-600 hover:bg-red-500 text-white font-bold text-lg shadow-2xl backdrop-blur-sm transition-all duration-300"
           >
             <EyeOff className="w-5 h-5 mr-2" />
             PASS
@@ -238,7 +237,7 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
           <Button 
             size="lg" 
             onClick={handlePeep}
-            className="flex-1 h-16 rounded-2xl bg-gradient-to-r from-rose-600/90 to-pink-600/90 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-lg shadow-2xl backdrop-blur-sm transition-all duration-300 hover:scale-105"
+            className="flex-1 h-16 rounded-[20%] bg-green-600 hover:bg-green-500 text-white font-bold text-lg shadow-2xl backdrop-blur-sm transition-all duration-300 hover:scale-105"
           >
             <Eye className="w-5 h-5 mr-2" />
             PEEP
