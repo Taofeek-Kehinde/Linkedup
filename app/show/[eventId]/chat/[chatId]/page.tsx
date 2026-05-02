@@ -42,8 +42,7 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [timeRemaining, setTimeRemaining] = useState('')
-const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [selectedEmojis, setSelectedEmojis] = useState<string[]>([])
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   
   // Recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -261,25 +260,8 @@ return () => {
     setNewMessage('')
   }
 
-function onEmojiClick(emojiObject: any) {
-    const emoji = emojiObject.emoji
-    // Add emoji to selected emojis array for multi-select mode
-    setSelectedEmojis(prev => [...prev, emoji])
-    // Also add to message immediately
-    setNewMessage(prev => prev + emoji)
-  }
-
-  function sendSelectedEmojis() {
-    if (selectedEmojis.length > 0) {
-      const emojiMessage = selectedEmojis.join('')
-      sendMessage(emojiMessage, 'text')
-      setSelectedEmojis([])
-      setShowEmojiPicker(false)
-    }
-  }
-
-  function clearSelectedEmojis() {
-    setSelectedEmojis([])
+  function onEmojiClick(emojiObject: any) {
+    setNewMessage(prev => prev + emojiObject.emoji)
     setShowEmojiPicker(false)
   }
 
@@ -308,11 +290,11 @@ function onEmojiClick(emojiObject: any) {
         }
       }
       
-mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'video/webm' })
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/mp4' })
         
         const formData = new FormData()
-        formData.append('file', blob, 'video.webm')
+        formData.append('file', blob, 'video.mp4')
         formData.append('eventId', eventId)
         formData.append('chatId', chatId)
         
@@ -656,46 +638,23 @@ mediaRecorder.onstop = async () => {
               <Sticker className="h-5 w-5" />
             </Button>
             
-{showEmojiPicker && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="relative bg-background rounded-lg p-4 shadow-xl max-w-sm w-full mx-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium">
-                      {selectedEmojis.length > 0 
-                        ? `${selectedEmojis.length} selected` 
-                        : 'Select stickers'}
-                    </span>
-                    <div className="flex gap-2">
-                      {selectedEmojis.length > 0 && (
-                        <Button 
-                          type="button"
-                          size="sm" 
-                          onClick={sendSelectedEmojis}
-                          disabled={isSending}
-                        >
-                          <Send className="h-4 w-4 mr-1" />
-                          Send
-                        </Button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSelectedEmojis([])
-                          setShowEmojiPicker(false)
-                        }}
-                        className="p-1 rounded-full hover:bg-accent"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 right-0 z-50">
+                <div className="relative">
                   <EmojiPicker 
                     onEmojiClick={onEmojiClick}
                     autoFocusSearch={false}
                     skinTonesDisabled
-                    searchPlaceholder="Search stickers..."
-                    width={320}
-                    height={400}
+                    searchPlaceholder="Search emojis..."
+                    width={350}
+                    height={420}
                   />
+                  <button
+                    onClick={() => setShowEmojiPicker(false)}
+                    className="absolute -top-2 -right-2 bg-black text-white rounded-full p-1 w-6 h-6 flex items-center justify-center"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
             )}
