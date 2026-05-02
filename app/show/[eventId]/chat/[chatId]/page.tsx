@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Clock, Mic, Video, X, Square } from 'lucide-react'
+import { Clock, Mic, Video, X, Square, Send, ArrowLeft, User, Sticker, MoreVertical } from 'lucide-react'
 import type { Chat, EventUser, Message, UserSession, Event } from '@/lib/types'
 import {
   DropdownMenu,
@@ -9,15 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getLocalSession, clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Send, User, Sticker } from 'lucide-react'
 import { useCallback } from 'react'
 import EmojiPicker from 'emoji-picker-react'
 
@@ -32,8 +29,6 @@ export default function ChatPage() {
   
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const videoPreviewRef = useRef<HTMLVideoElement | null>(null)
-  const videoCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   
@@ -54,7 +49,7 @@ export default function ChatPage() {
   const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
 
-// Load initial data
+  // Load initial data
   useEffect(() => {
     async function loadData() {
       if (!eventId || !chatId) {
@@ -62,7 +57,6 @@ export default function ChatPage() {
         return
       }
 
-      // Get session from localStorage first
       const localSession = getLocalSession()
       if (!localSession || localSession.eventId !== eventId) {
         router.push('/')
@@ -98,14 +92,14 @@ export default function ChatPage() {
 
       setPartner(partnerData)
 
-      // Load messages with reply_to populated
+      // Load messages
       const { data: messagesData } = await supabase
         .from('messages')
-        .select('*, reply_to:reply_to_id(*)')
+        .select('*')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true })
 
-setMessages(messagesData || [])
+      setMessages(messagesData || [])
       
       // Load event
       const { data: eventData } = await supabase
@@ -114,26 +108,7 @@ setMessages(messagesData || [])
         .eq('id', eventId)
         .single()
       
-      // Check if event is still valid
       if (!eventData || eventData.status === 'ended') {
-        clearLocalSession()
-        router.push('/')
-        return
-      }
-      
-      // Check time expiration
-      const now = Date.now()
-      let expired = false
-      if (eventData.ends_at) {
-        expired = new Date(eventData.ends_at).getTime() < now
-      } else if (eventData.starts_at) {
-        expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < now
-      } else {
-        expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < now
-      }
-      
-      if (expired) {
-        await supabase.from('events').update({ status: 'ended' }).eq('id', eventId)
         clearLocalSession()
         router.push('/')
         return
@@ -146,45 +121,6 @@ setMessages(messagesData || [])
     loadData()
   }, [eventId, chatId, router])
 
-  // Periodic check: verify event is still live every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (!session) return
-      
-      const supabase = createClient()
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', eventId)
-        .single()
-      
-      if (!eventData || eventData.status === 'ended') {
-        clearLocalSession()
-        router.push('/')
-        return
-      }
-      
-      // Check time expiration
-      const now = Date.now()
-      let expired = false
-      if (eventData.ends_at) {
-        expired = new Date(eventData.ends_at).getTime() < now
-      } else if (eventData.starts_at) {
-        expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < now
-      } else {
-        expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < now
-      }
-      
-      if (expired) {
-        await supabase.from('events').update({ status: 'ended' }).eq('id', eventId)
-        clearLocalSession()
-        router.push('/')
-      }
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [eventId, session, router])
-
   // Real-time subscription for new messages
   useEffect(() => {
     if (!chat) return
@@ -195,19 +131,24 @@ setMessages(messagesData || [])
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
+        async (payload) => {
           const newMsg = payload.new as Message
           
-          // Notification for incoming messages
-          if (newMsg.sender_id !== session?.eventUserId && session) {
+          // Fetch the complete message with message_type
+          const { data: fullMsg } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('id', newMsg.id)
+            .single()
+          
+          if (fullMsg && fullMsg.sender_id !== session?.eventUserId && session) {
             playBeep()
-            showNotification(newMsg.content, partner?.username || 'Chat')
+            showNotification(fullMsg.content, partner?.username || 'Chat')
           }
           
           setMessages(prev => {
-            // Avoid duplicates
-            if (prev.some(m => m.id === newMsg.id)) return prev
-            return [...prev, newMsg]
+            if (prev.some(m => m.id === fullMsg?.id)) return prev
+            return fullMsg ? [...prev, fullMsg] : prev
           })
         }
       )
@@ -216,7 +157,7 @@ setMessages(messagesData || [])
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [chat, chatId])
+  }, [chat, chatId, session?.eventUserId, partner?.username])
 
   // Cleanup recording on unmount
   useEffect(() => {
@@ -285,7 +226,7 @@ setMessages(messagesData || [])
     setReplyTo(null)
 
     const supabase = createClient()
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .insert({
         chat_id: chatId,
@@ -294,9 +235,14 @@ setMessages(messagesData || [])
         reply_to_id: replyToId,
         message_type: type,
       })
+      .select()
+      .single()
 
     if (error) {
       console.error('Send error:', error)
+    } else if (data) {
+      // Add to messages immediately
+      setMessages(prev => [...prev, data])
     }
     
     setIsSending(false)
@@ -342,24 +288,35 @@ setMessages(messagesData || [])
       
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/mp4' })
-        const videoUrl = URL.createObjectURL(blob)
         
-        // Send video message
-        await sendMessage(videoUrl, 'video')
+        // Upload video to server first
+        const formData = new FormData()
+        formData.append('file', blob, 'video.mp4')
+        formData.append('eventId', eventId)
+        formData.append('chatId', chatId)
         
-        // Cleanup
+        const uploadRes = await fetch('/api/upload-message-media', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json()
+          await sendMessage(url, 'video')
+        } else {
+          console.error('Upload failed')
+        }
+        
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
-        URL.revokeObjectURL(videoUrl)
       }
       
-      mediaRecorder.start()
+      mediaRecorder.start(1000) // Collect data every second
       setIsRecording(true)
       setRecordingType('video')
       setRecordingTime(0)
       
-      // Timer for 15 seconds
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= 14) {
@@ -394,24 +351,35 @@ setMessages(messagesData || [])
       
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'audio/webm' })
-        const audioUrl = URL.createObjectURL(blob)
         
-        // Send audio message
-        await sendMessage(audioUrl, 'audio')
+        // Upload audio to server first
+        const formData = new FormData()
+        formData.append('file', blob, 'audio.webm')
+        formData.append('eventId', eventId)
+        formData.append('chatId', chatId)
         
-        // Cleanup
+        const uploadRes = await fetch('/api/upload-message-media', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json()
+          await sendMessage(url, 'audio')
+        } else {
+          console.error('Upload failed')
+        }
+        
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
-        URL.revokeObjectURL(audioUrl)
       }
       
-      mediaRecorder.start()
+      mediaRecorder.start(1000) // Collect data every second
       setIsRecording(true)
       setRecordingType('audio')
       setRecordingTime(0)
       
-      // Timer for 15 seconds
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= 14) {
@@ -428,7 +396,7 @@ setMessages(messagesData || [])
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && isRecording && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
     }
     if (recordingTimerRef.current) {
@@ -439,7 +407,7 @@ setMessages(messagesData || [])
     setRecordingTime(0)
   }
 
-  // Beep sound using Web Audio API
+  // Beep sound
   const playBeep = useCallback(() => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -457,6 +425,7 @@ setMessages(messagesData || [])
 
       oscillator.start(audioContext.currentTime)
       oscillator.stop(audioContext.currentTime + 0.2)
+      audioContext.close()
     } catch (e) {
       console.warn('Audio not supported', e)
     }
@@ -464,20 +433,14 @@ setMessages(messagesData || [])
 
   // Browser notification
   const showNotification = useCallback((content: string, username: string) => {
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        new Notification('New message from ' + username, {
-          body: content.length > 50 ? content.slice(0, 50) + '...' : content,
-          icon: '/logo.png',
-          tag: 'chat-' + chatId,
-        })
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            showNotification(content, username)
-          }
-        })
-      }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('New message from ' + username, {
+        body: content.length > 50 ? content.slice(0, 50) + '...' : content,
+        icon: '/logo.png',
+        tag: 'chat-' + chatId,
+      })
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission()
     }
   }, [chatId])
 
@@ -523,16 +486,14 @@ setMessages(messagesData || [])
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
-        {/* Timer row at very top */}
         {event && timeRemaining && (
           <div className="w-full p-3 bg-gradient-to-r from-primary/20 to-primary/10 border-b border-primary/30">
-            <div className="flex items-center justify-center gap-2 text-primary-foreground font-mono font-bold text-lg">
+            <div className="flex items-center justify-center gap-2 font-mono font-bold text-lg">
               <Clock className="h-5 w-5" />
               <span>{timeRemaining}</span>
             </div>
           </div>
         )}
-        {/* Partner header */}
         <div className="flex items-center gap-3 p-4">
           <Button variant="ghost" size="icon" onClick={() => router.push(`/show/${eventId}`)}>
             <ArrowLeft className="h-5 w-5" />
@@ -545,16 +506,10 @@ setMessages(messagesData || [])
                 alt={partner.username}
                 className="w-10 h-10 rounded-full object-cover"
               />
-              {partner.is_vip && (
-                <img src="/tick.png" alt="VIP" className="w-4 h-4 absolute -bottom-0.5 -right-0.5" />
-              )}
             </div>
           ) : (
             <div className="relative w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
               <User className="h-5 w-5 text-muted-foreground" />
-              {partner?.is_vip && (
-                <img src="/tick.png" alt="VIP" className="w-4 h-4 absolute -bottom-0.5 -right-0.5" />
-              )}
             </div>
           )}
           
@@ -576,72 +531,13 @@ setMessages(messagesData || [])
         ) : (
           messages.map((message) => {
             const isOwn = message.sender_id === session.eventUserId
-            const replyToMsg = (message as any).reply_to
-
-            // Avatar for the sender of this message
-            const Avatar = () => {
-              if (isOwn) {
-                return session.selfieUrl ? (
-                  <img
-                    src={session.selfieUrl}
-                    alt="You"
-                    className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center ring-2 ring-primary">
-                    <span className="text-xs font-bold text-primary">{session.username.charAt(0).toUpperCase()}</span>
-                  </div>
-                )
-              }
-              return partner?.selfie_url ? (
-                <img
-                  src={partner.selfie_url}
-                  alt={partner.username}
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-secondary"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center ring-2 ring-secondary">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )
-            }
-
-            // Render message content based on type
-            const renderContent = () => {
-              const messageType = (message as any).message_type || 'text'
-              
-              if (messageType === 'video' && message.content.startsWith('blob:')) {
-                return (
-                  <video 
-                    src={message.content} 
-                    controls 
-                    className="max-w-full rounded-lg max-h-[300px]"
-                    controlsList="nodownload"
-                  />
-                )
-              }
-              
-              if (messageType === 'audio' && message.content.startsWith('blob:')) {
-                return (
-                  <audio 
-                    src={message.content} 
-                    controls 
-                    className="max-w-full"
-                    controlsList="nodownload"
-                  />
-                )
-              }
-              
-              return <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-            }
+            const messageType = (message as any).message_type || 'text'
 
             return (
               <div
                 key={message.id}
-                className={`group flex ${isOwn ? 'justify-end' : 'justify-start'} items-end gap-2`}
-                onClick={(e) => e.stopPropagation()}
+                className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
               >
-                {!isOwn && <Avatar />}
                 <div
                   className={`max-w-[70%] px-4 py-2 rounded-2xl relative ${
                     isOwn
@@ -649,29 +545,41 @@ setMessages(messagesData || [])
                       : 'bg-secondary text-secondary-foreground rounded-bl-md'
                   }`}
                 >
-                  {replyToMsg && (
-                    <div className="mb-2 p-2 bg-background/50 rounded-lg border">
-                      <p className="text-xs text-muted-foreground mb-1">Replying to</p>
-                      <p className="text-xs italic truncate">{replyToMsg.content}</p>
-                    </div>
+                  {messageType === 'video' && message.content && (
+                    <video 
+                      src={message.content} 
+                      controls 
+                      className="max-w-full rounded-lg max-h-[300px]"
+                      controlsList="nodownload"
+                    />
                   )}
-                  {renderContent()}
+                  
+                  {messageType === 'audio' && message.content && (
+                    <audio 
+                      src={message.content} 
+                      controls 
+                      className="max-w-full"
+                      controlsList="nodownload"
+                    />
+                  )}
+                  
+                  {messageType === 'text' && (
+                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  )}
+                  
                   <p className={`text-xs mt-1 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
                     {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity p-1 -m-1 rounded-full hover:bg-accent/50 cursor-pointer">
-                        <MoreVertical className="h-3 w-3 text-muted-foreground" />
+                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 -m-1 rounded-full hover:bg-accent/50 cursor-pointer">
+                        <MoreVertical className="h-3 w-3" />
                       </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent sideOffset={5} align="end" className="w-32 p-1">
                       <DropdownMenuItem
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setReply(message)
-                        }}
+                        onClick={() => setReply(message)}
                         className="cursor-pointer text-xs py-1.5"
                       >
                         Reply
@@ -679,7 +587,6 @@ setMessages(messagesData || [])
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                {isOwn && <Avatar />}
               </div>
             )
           })
@@ -691,19 +598,16 @@ setMessages(messagesData || [])
       <div className="sticky bottom-0 bg-background border-t border-border/50 p-4">
         {replyTo && (
           <div className="mb-3 p-3 bg-accent/50 rounded-lg border flex items-start gap-2">
-            <button
-              onClick={cancelReply}
-              className="text-muted-foreground hover:text-foreground text-sm -mt-1"
-            >
+            <button onClick={cancelReply} className="text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
             </button>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Replying to {replyTo.content.length > 50 ? replyTo.content.slice(0,50) + '...' : replyTo.content}</p>
-            </div>
+            <p className="text-xs text-muted-foreground flex-1">
+              Replying to: {replyTo.content.length > 50 ? replyTo.content.slice(0,50) + '...' : replyTo.content}
+            </p>
           </div>
         )}
+        
         <div className="flex gap-2">
-          {/* Video Recording Button */}
           <Button 
             type="button" 
             variant="outline" 
@@ -715,7 +619,6 @@ setMessages(messagesData || [])
             <Video className="h-5 w-5" />
           </Button>
 
-          {/* Audio Recording Button */}
           <Button 
             type="button" 
             variant="outline" 
@@ -727,7 +630,6 @@ setMessages(messagesData || [])
             <Mic className="h-5 w-5" />
           </Button>
 
-          {/* Sticker/Emoji Button with real emoji picker */}
           <div className="relative">
             <Button 
               type="button" 
@@ -748,12 +650,12 @@ setMessages(messagesData || [])
                     autoFocusSearch={false}
                     skinTonesDisabled
                     searchPlaceholder="Search emojis..."
-                    width={320}
-                    height={400}
+                    width={350}
+                    height={420}
                   />
                   <button
                     onClick={() => setShowEmojiPicker(false)}
-                    className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-1"
+                    className="absolute -top-2 -right-2 bg-black text-white rounded-full p-1"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -762,7 +664,6 @@ setMessages(messagesData || [])
             )}
           </div>
 
-          {/* Text Input Form */}
           <form onSubmit={handleTextSubmit} className="flex-1 flex gap-2">
             <Input
               ref={inputRef}
@@ -773,11 +674,7 @@ setMessages(messagesData || [])
               autoComplete="off"
             />
             <Button type="submit" size="icon" disabled={!newMessage.trim() || isSending}>
-              {isSending ? (
-                <Spinner className="h-4 w-4" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              {isSending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
         </div>
