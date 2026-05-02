@@ -22,16 +22,16 @@ export default function ChatPage() {
   const params = useParams()
   const eventId = params.eventId as string
   const chatId = params.chatId as string
-  
+
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  
+
   // Recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   const [session, setSession] = useState<UserSession | null>(null)
   const [chat, setChat] = useState<Chat | null>(null)
   const [partner, setPartner] = useState<EventUser | null>(null)
@@ -42,10 +42,10 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [timeRemaining, setTimeRemaining] = useState('')
-const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>([])
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
-  
+
   // Recording states
   const [isRecording, setIsRecording] = useState(false)
   const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null)
@@ -82,8 +82,8 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false)
       setChat(chatData)
 
       // Load partner
-      const partnerId = chatData.user1_id === localSession.eventUserId 
-        ? chatData.user2_id 
+      const partnerId = chatData.user1_id === localSession.eventUserId
+        ? chatData.user2_id
         : chatData.user1_id
 
       const { data: partnerData } = await supabase
@@ -102,20 +102,20 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false)
         .order('created_at', { ascending: true })
 
       setMessages(messagesData || [])
-      
+
       // Load event
       const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('id', eventId)
         .single()
-      
+
       if (!eventData || eventData.status === 'ended') {
         clearLocalSession()
         router.push('/')
         return
       }
-      
+
       setEvent(eventData)
       setIsLoading(false)
     }
@@ -135,12 +135,12 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false)
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
         (payload) => {
           const newMsg = payload.new as Message
-          
+
           if (newMsg.sender_id !== session?.eventUserId && session) {
             playBeep()
             showNotification(newMsg.content, partner?.username || 'Chat')
           }
-          
+
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev
             return [...prev, newMsg]
@@ -203,7 +203,7 @@ const [showEmojiPicker, setShowEmojiPicker] = useState(false)
       interval = setInterval(updateTimer, 1000)
     }
 
-return () => {
+    return () => {
       if (interval) clearInterval(interval)
     }
   }, [event])
@@ -228,6 +228,7 @@ return () => {
         sender_id: session.eventUserId,
         content: content,
         reply_to_id: replyToId,
+        message_type: type
       })
       .select()
       .single()
@@ -248,14 +249,17 @@ return () => {
       setMessages(prev => [...prev, tempMessage])
     } else if (data) {
       // Add message to state immediately
-      setMessages(prev => [...prev, data])
+      setMessages(prev => {
+        if (prev.some(m => m.id === data.id)) return prev
+        return [...prev, data]
+      })
     }
-    
+
     setIsSending(false)
     inputRef.current?.focus()
   }
 
-function handleTextSubmit(e: React.FormEvent) {
+  function handleTextSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (isMultiSelectMode && selectedEmojis.length > 0) {
       const emojiMessage = selectedEmojis.join('')
@@ -270,7 +274,7 @@ function handleTextSubmit(e: React.FormEvent) {
     setNewMessage('')
   }
 
-function onEmojiClick(emojiObject: any) {
+  function onEmojiClick(emojiObject: any) {
     const emoji = emojiObject.emoji
     if (isMultiSelectMode) {
       setSelectedEmojis(prev => {
@@ -314,46 +318,46 @@ function onEmojiClick(emojiObject: any) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       streamRef.current = stream
-      
+
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
-      
+
       const chunks: BlobPart[] = []
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data)
         }
       }
-      
+
       mediaRecorder.onstop = async () => {
-const blob = new Blob(chunks, { type: 'video/webm' })
-        
+        const blob = new Blob(chunks, { type: 'video/webm' })
+
         const formData = new FormData()
         formData.append('file', blob, 'video.webm')
         formData.append('eventId', eventId)
         formData.append('chatId', chatId)
-        
+
         const uploadRes = await fetch('/api/upload-message-media', {
           method: 'POST',
           body: formData,
         })
-        
+
         if (uploadRes.ok) {
           const { url } = await uploadRes.json()
           await sendMessage(url, 'video')
         }
-        
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
       }
-      
+
       mediaRecorder.start(1000)
       setIsRecording(true)
       setRecordingType('video')
       setRecordingTime(0)
-      
+
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= 14) {
@@ -363,7 +367,7 @@ const blob = new Blob(chunks, { type: 'video/webm' })
           return prev + 1
         })
       }, 1000)
-      
+
     } catch (error) {
       console.error('Video recording error:', error)
     }
@@ -374,46 +378,46 @@ const blob = new Blob(chunks, { type: 'video/webm' })
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      
+
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
-      
+
       const chunks: BlobPart[] = []
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data)
         }
       }
-      
+
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'audio/webm' })
-        
+
         const formData = new FormData()
         formData.append('file', blob, 'audio.webm')
         formData.append('eventId', eventId)
         formData.append('chatId', chatId)
-        
+
         const uploadRes = await fetch('/api/upload-message-media', {
           method: 'POST',
           body: formData,
         })
-        
+
         if (uploadRes.ok) {
           const { url } = await uploadRes.json()
           await sendMessage(url, 'audio')
         }
-        
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
       }
-      
+
       mediaRecorder.start(1000)
       setIsRecording(true)
       setRecordingType('audio')
       setRecordingTime(0)
-      
+
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           if (prev >= 14) {
@@ -423,7 +427,7 @@ const blob = new Blob(chunks, { type: 'video/webm' })
           return prev + 1
         })
       }, 1000)
-      
+
     } catch (error) {
       console.error('Audio recording error:', error)
     }
@@ -505,7 +509,7 @@ const blob = new Blob(chunks, { type: 'video/webm' })
             <p className="text-white text-lg font-semibold">
               Recording {recordingType === 'video' ? 'video' : 'voice note'}...
             </p>
-            <Button 
+            <Button
               onClick={stopRecording}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
@@ -530,11 +534,11 @@ const blob = new Blob(chunks, { type: 'video/webm' })
           <Button variant="ghost" size="icon" onClick={() => router.push(`/show/${eventId}`)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          
+
           {partner?.selfie_url ? (
             <div className="relative">
-              <img 
-                src={partner.selfie_url} 
+              <img
+                src={partner.selfie_url}
                 alt={partner.username}
                 className="w-10 h-10 rounded-full object-cover"
               />
@@ -544,7 +548,7 @@ const blob = new Blob(chunks, { type: 'video/webm' })
               <User className="h-5 w-5 text-muted-foreground" />
             </div>
           )}
-          
+
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-foreground truncate">{partner?.username || 'Unknown'}</h1>
             <p className="text-xs font-mono text-muted-foreground">{partner?.vibe_key}</p>
@@ -563,7 +567,8 @@ const blob = new Blob(chunks, { type: 'video/webm' })
         ) : (
           messages.map((message) => {
             const isOwn = message.sender_id === session.eventUserId
-            const messageType = message.message_type || 'text'
+            const messageType = message.message_type
+              || (message.content?.includes('.webm') ? 'video' : 'text')
 
             return (
               <div
@@ -571,34 +576,33 @@ const blob = new Blob(chunks, { type: 'video/webm' })
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
               >
                 <div
-                  className={`max-w-[70%] px-4 py-2 rounded-2xl relative ${
-                    isOwn
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-secondary text-secondary-foreground rounded-bl-md'
-                  }`}
+                  className={`max-w-[70%] px-4 py-2 rounded-2xl relative ${isOwn
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                    : 'bg-secondary text-secondary-foreground rounded-bl-md'
+                    }`}
                 >
                   {messageType === 'video' && message.content && (
-                    <video 
-                      src={message.content} 
-                      controls 
+                    <video
+                      src={message.content}
+                      controls
                       className="max-w-full rounded-lg max-h-[300px]"
                       controlsList="nodownload"
                     />
                   )}
-                  
+
                   {messageType === 'audio' && message.content && (
-                    <audio 
-                      src={message.content} 
-                      controls 
+                    <audio
+                      src={message.content}
+                      controls
                       className="max-w-full"
                       controlsList="nodownload"
                     />
                   )}
-                  
+
                   {messageType === 'text' && (
                     <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                   )}
-                  
+
                   <p className={`text-xs mt-1 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
                     {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -634,16 +638,16 @@ const blob = new Blob(chunks, { type: 'video/webm' })
               <X className="h-3 w-3" />
             </button>
             <p className="text-xs text-muted-foreground flex-1">
-              Replying to: {replyTo.content.length > 50 ? replyTo.content.slice(0,50) + '...' : replyTo.content}
+              Replying to: {replyTo.content.length > 50 ? replyTo.content.slice(0, 50) + '...' : replyTo.content}
             </p>
           </div>
         )}
-        
+
         <div className="flex gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="icon" 
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             className="h-10 w-10 shrink-0"
             onClick={startVideoRecording}
             title="Record video (15 seconds max)"
@@ -651,10 +655,10 @@ const blob = new Blob(chunks, { type: 'video/webm' })
             <Video className="h-5 w-5" />
           </Button>
 
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="icon" 
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             className="h-10 w-10 shrink-0"
             onClick={startAudioRecording}
             title="Record voice note (15 seconds max)"
@@ -663,18 +667,18 @@ const blob = new Blob(chunks, { type: 'video/webm' })
           </Button>
 
           <div className="relative">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="icon" 
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
               className="h-10 w-10 shrink-0"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               title="Add emoji"
             >
               <Sticker className="h-5 w-5" />
             </Button>
-            
-{showEmojiPicker && (
+
+            {showEmojiPicker && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="relative bg-background rounded-lg p-2 shadow-xl max-w-xs w-full mx-2">
                   <div className="flex items-center justify-between mb-2">
@@ -697,7 +701,7 @@ const blob = new Blob(chunks, { type: 'video/webm' })
                       <X className="h-3 w-3" />
                     </button>
                   </div>
-                  <EmojiPicker 
+                  <EmojiPicker
                     onEmojiClick={onEmojiClick}
                     autoFocusSearch={false}
                     skinTonesDisabled
@@ -718,9 +722,9 @@ const blob = new Blob(chunks, { type: 'video/webm' })
               className="flex-1 bg-input"
               autoComplete="off"
             />
-<Button 
-              type="submit" 
-              size="icon" 
+            <Button
+              type="submit"
+              size="icon"
               disabled={(isMultiSelectMode && selectedEmojis.length === 0) || (!isMultiSelectMode && !newMessage.trim()) || isSending}
             >
               {isSending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
