@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
 import Image from 'next/image'
 import { ArrowRight, ArrowLeft, RefreshCw, UserCheck, MapPin } from 'lucide-react'
-import { getLocalSession, setLocalSession } from '@/lib/utils/session'
+import { getLocalSession, setLocalSession, clearLocalSession } from '@/lib/utils/session'
 import { generateEventUsernameClient } from '@/lib/utils/generate-username'
 import { generateVibeKey } from '@/lib/utils/generate-vibe-key'
 import { generateSessionToken } from '@/lib/utils/generate-session-token'
@@ -44,12 +44,88 @@ export function JoinFlow() {
   const [rejoinUsername, setRejoinUsername] = useState('')
   const [rejoinVibeKey, setRejoinVibeKey] = useState('')
 
-  // Auto-validate code from URL
+  // Auto-validate code from URL and check for existing session
   useEffect(() => {
-    if (initialCode && !event) {
-      validateCode(initialCode)
+    if (initialCode) {
+      // First check if there's an existing session for this event
+      const existingSession = getLocalSession()
+      
+      if (existingSession) {
+        // Validate code and check if session belongs to this event
+        validateAndRejoin(initialCode, existingSession)
+      } else {
+        // No existing session, validate code normally
+        validateCode(initialCode)
+      }
     }
   }, [initialCode])
+
+  // Check if existing session is valid for this event
+  async function validateAndRejoin(code: string, existingSession: UserSession) {
+    setIsLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    
+    // Get the event by code
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('event_code', code.toUpperCase())
+      .single()
+
+    if (eventError || !event) {
+      // Event not found, clear session and show join form
+      clearLocalSession()
+      setEvent(null)
+      setStep('code')
+      setIsLoading(false)
+      return
+    }
+
+    // Check if event has ended
+    if (event.status === 'ended') {
+      clearLocalSession()
+      setEvent(event)
+      setStep('code')
+      setIsLoading(false)
+      return
+    }
+
+    if (event.status === 'upcoming') {
+      setError('This event has not started yet.')
+      setEvent(event)
+      setIsLoading(false)
+      return
+    }
+
+    // Check if the existing session belongs to this event
+    if (existingSession.eventId === event.id) {
+      // Session matches this event! Validate the session is still valid
+      const { data: eventUser, error: userError } = await supabase
+        .from('event_users')
+        .select('*')
+        .eq('id', existingSession.eventUserId)
+        .eq('session_token', existingSession.sessionToken)
+        .single()
+
+      if (!userError && eventUser) {
+        // Session is valid! Auto-rejoin the event
+        setIsLoading(false)
+        router.push(`/show/${event.id}`)
+        return
+      }
+    }
+
+    // Session not valid for this event, proceed to create new identity
+    setEvent(event)
+    if (event) {
+      setUsername(generateEventUsernameClient(event.show_name))
+    }
+    setVibeKey(generateVibeKey())
+    setStep('identity')
+    setIsLoading(false)
+  }
 
   async function validateCode(code: string) {
     setIsLoading(true)
