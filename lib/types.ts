@@ -44,6 +44,7 @@ export interface Message {
   content: string
   created_at: string
   reply_to_id: string | null
+  message_type: 'text' | 'video' | 'audio'
 }
 
 // Extended types with relations
