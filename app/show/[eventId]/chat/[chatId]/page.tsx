@@ -255,8 +255,16 @@ return () => {
     inputRef.current?.focus()
   }
 
-  function handleTextSubmit(e: React.FormEvent) {
+function handleTextSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (isMultiSelectMode && selectedEmojis.length > 0) {
+      const emojiMessage = selectedEmojis.join('')
+      sendMessage(emojiMessage, 'text')
+      setSelectedEmojis([])
+      setIsMultiSelectMode(false)
+      setShowEmojiPicker(false)
+      return
+    }
     if (!newMessage.trim() || isSending) return
     sendMessage(newMessage.trim(), 'text')
     setNewMessage('')
@@ -670,34 +678,24 @@ const blob = new Blob(chunks, { type: 'video/webm' })
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="relative bg-background rounded-lg p-2 shadow-xl max-w-xs w-full mx-2">
                   <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">
+                      {selectedEmojis.length > 0 ? `${selectedEmojis.length} selected` : 'Stickers'}
+                    </span>
                     <button
                       onClick={toggleMultiSelectMode}
                       className={`text-xs px-2 py-1 rounded ${isMultiSelectMode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
                     >
                       {isMultiSelectMode ? 'Multi' : 'Single'}
                     </button>
-                    <div className="flex gap-1">
-                      {selectedEmojis.length > 0 && (
-                        <Button 
-                          type="button"
-                          size="sm" 
-                          onClick={sendSelectedEmojis}
-                          disabled={isSending}
-                          className="h-7 text-xs px-2"
-                        >
-                          Send {selectedEmojis.length}
-                        </Button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSelectedEmojis([])
-                          setShowEmojiPicker(false)
-                        }}
-                        className="p-1 rounded-full hover:bg-accent"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedEmojis([])
+                        setShowEmojiPicker(false)
+                      }}
+                      className="p-1 rounded-full hover:bg-accent"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                   <EmojiPicker 
                     onEmojiClick={onEmojiClick}
@@ -720,7 +718,11 @@ const blob = new Blob(chunks, { type: 'video/webm' })
               className="flex-1 bg-input"
               autoComplete="off"
             />
-            <Button type="submit" size="icon" disabled={!newMessage.trim() || isSending}>
+<Button 
+              type="submit" 
+              size="icon" 
+              disabled={(isMultiSelectMode && selectedEmojis.length === 0) || (!isMultiSelectMode && !newMessage.trim()) || isSending}
+            >
               {isSending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
