@@ -344,8 +344,8 @@ export default function ChatPage() {
         })
 
         if (uploadRes.ok) {
-          const { url } = await uploadRes.json()
-          await sendMessage(url, 'video')
+          const { url, type } = await uploadRes.json()
+          await sendMessage(url, type)
         }
 
         if (streamRef.current) {
@@ -404,8 +404,8 @@ export default function ChatPage() {
         })
 
         if (uploadRes.ok) {
-          const { url } = await uploadRes.json()
-          await sendMessage(url, 'audio')
+          const { url, type } = await uploadRes.json()
+          await sendMessage(url, type)
         }
 
         if (streamRef.current) {
@@ -568,7 +568,7 @@ export default function ChatPage() {
           messages.map((message) => {
             const isOwn = message.sender_id === session.eventUserId
             const messageType = message.message_type
-              || (message.content?.includes('.webm') ? 'video' : 'text')
+              || 'text'
 
             return (
               <div
@@ -585,8 +585,8 @@ export default function ChatPage() {
                     <video
                       src={message.content}
                       controls
+                      playsInline
                       className="max-w-full rounded-lg max-h-[300px]"
-                      controlsList="nodownload"
                     />
                   )}
 
