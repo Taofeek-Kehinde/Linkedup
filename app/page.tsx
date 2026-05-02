@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { QrCode, Users, CameraIcon, ArrowRight, X, Scan, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import type { Event } from '@/lib/types'
-import { getLocalSession } from '@/lib/utils/session'
+import { getLocalSession, clearLocalSession } from '@/lib/utils/session'
 import Link from 'next/link'
 import { Dancing_Script } from 'next/font/google';
 
@@ -27,13 +27,7 @@ export default function HomePage() {
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [isLoadingEvents, setIsLoadingEvents] = useState(true)
 
-  useEffect(() => {
-    // Check if user has existing session
-    const session = getLocalSession()
-    if (session) {
-      setHasSession(true)
-    }
-
+useEffect(() => {
     // Auto-start any upcoming events whose time has passed
     async function autoStartEvents() {
       try {
@@ -41,6 +35,48 @@ export default function HomePage() {
       } catch {
         // Silently fail - events may already be live
       }
+    }
+
+    // Check existing session and validate if event is still live for auto-rejoin
+    async function checkSessionAndAutoJoin() {
+      const session = getLocalSession()
+      if (!session) {
+        setHasSession(false)
+        return // No session, show join options
+      }
+
+      const supabase = createClient()
+      
+      // Check if event is still live
+      const { data: event } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', session.eventId)
+        .single()
+
+      if (!event) {
+        // Event doesn't exist, clear session
+        clearLocalSession()
+        setHasSession(false)
+        return
+      }
+
+      // Check if event has ended
+      let eventEnded = event.status === 'ended'
+      if (!eventEnded && event.ends_at) {
+        eventEnded = new Date(event.ends_at).getTime() < Date.now()
+      }
+
+      if (eventEnded) {
+        // Event ended, clear session and show join options
+        clearLocalSession()
+        setHasSession(false)
+        return
+      }
+
+      // Event is still live - auto-rejoin!
+      setHasSession(true)
+      router.push(`/show/${session.eventId}`)
     }
 
     // Load all live events
@@ -58,8 +94,12 @@ export default function HomePage() {
       setIsLoadingEvents(false)
     }
 
-    loadLiveEvents()
-  }, [])
+    // Run session check first (auto-join if valid)
+    checkSessionAndAutoJoin().then(() => {
+      // After session check, also load live events for QR scan
+      loadLiveEvents()
+    })
+  }, [router])
 
   function handleResume() {
     const session = getLocalSession()
