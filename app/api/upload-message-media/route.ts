@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const timestamp = Date.now()
+const timestamp = Date.now()
     const fileType = file.type.startsWith('video') ? 'videos' : 'audio'
-    const extension = file.type.startsWith('video') ? 'mp4' : 'webm'
+    const extension = file.type.startsWith('video') ? 'webm' : 'webm'
     const filename = `chat-media/${eventId}/${chatId}/${timestamp}.${extension}`
     
     const bytes = await file.arrayBuffer()
