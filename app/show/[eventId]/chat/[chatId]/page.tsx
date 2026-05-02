@@ -12,7 +12,7 @@ import {
 import { MoreVertical } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getLocalSession } from '@/lib/utils/session'
+import { getLocalSession, clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -54,7 +54,7 @@ export default function ChatPage() {
   const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
 
-  // Load initial data
+// Load initial data
   useEffect(() => {
     async function loadData() {
       if (!eventId || !chatId) {
@@ -62,6 +62,7 @@ export default function ChatPage() {
         return
       }
 
+      // Get session from localStorage first
       const localSession = getLocalSession()
       if (!localSession || localSession.eventId !== eventId) {
         router.push('/')
@@ -104,20 +105,85 @@ export default function ChatPage() {
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true })
 
-      setMessages(messagesData || [])
+setMessages(messagesData || [])
+      
       // Load event
       const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('id', eventId)
         .single()
+      
+      // Check if event is still valid
+      if (!eventData || eventData.status === 'ended') {
+        clearLocalSession()
+        router.push('/')
+        return
+      }
+      
+      // Check time expiration
+      const now = Date.now()
+      let expired = false
+      if (eventData.ends_at) {
+        expired = new Date(eventData.ends_at).getTime() < now
+      } else if (eventData.starts_at) {
+        expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < now
+      } else {
+        expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < now
+      }
+      
+      if (expired) {
+        await supabase.from('events').update({ status: 'ended' }).eq('id', eventId)
+        clearLocalSession()
+        router.push('/')
+        return
+      }
+      
       setEvent(eventData)
-
       setIsLoading(false)
     }
 
     loadData()
   }, [eventId, chatId, router])
+
+  // Periodic check: verify event is still live every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!session) return
+      
+      const supabase = createClient()
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single()
+      
+      if (!eventData || eventData.status === 'ended') {
+        clearLocalSession()
+        router.push('/')
+        return
+      }
+      
+      // Check time expiration
+      const now = Date.now()
+      let expired = false
+      if (eventData.ends_at) {
+        expired = new Date(eventData.ends_at).getTime() < now
+      } else if (eventData.starts_at) {
+        expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < now
+      } else {
+        expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < now
+      }
+      
+      if (expired) {
+        await supabase.from('events').update({ status: 'ended' }).eq('id', eventId)
+        clearLocalSession()
+        router.push('/')
+      }
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [eventId, session, router])
 
   // Real-time subscription for new messages
   useEffect(() => {
