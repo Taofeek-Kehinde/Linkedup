@@ -235,7 +235,8 @@ export default function ChatPage() {
 
     if (error) {
       console.error('Send error:', error)
-      // Still add the message locally so it shows
+      // Still add the message locally so it shows - this is a workaround
+      // In production you'd want proper error handling
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         chat_id: chatId,
@@ -247,6 +248,7 @@ export default function ChatPage() {
       }
       setMessages(prev => [...prev, tempMessage])
     } else if (data) {
+      // Add message to state immediately
       setMessages(prev => {
         if (prev.some(m => m.id === data.id)) return prev
         return [...prev, data]
@@ -294,6 +296,15 @@ export default function ChatPage() {
     }
   }
 
+  async function sendSelectedEmojis() {
+    if (selectedEmojis.length === 0) return
+    const emojiMessage = selectedEmojis.join('')
+    await sendMessage(emojiMessage, 'text')
+    setSelectedEmojis([])
+    setIsMultiSelectMode(false)
+    setShowEmojiPicker(false)
+  }
+
   function setReply(message: Message) {
     setReplyTo(message)
   }
@@ -302,177 +313,129 @@ export default function ChatPage() {
     setReplyTo(null)
   }
 
-  // Start video recording - sends immediately when stopped
-  
-
-  // Start audio recording - sends immediately when stopped
   // Start video recording
-async function startVideoRecording() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    streamRef.current = stream
+  async function startVideoRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      streamRef.current = stream
 
-    // Find supported MIME type
-    const mimeTypes = ['video/mp4', 'video/webm', 'video/mp4;codecs=h264']
-    let mimeType = ''
-    for (const type of mimeTypes) {
-      if (MediaRecorder.isTypeSupported(type)) {
-        mimeType = type
-        break
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+
+      const chunks: BlobPart[] = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
       }
-    }
 
-    const mediaRecorder = new MediaRecorder(stream, { mimeType })
-    mediaRecorderRef.current = mediaRecorder
+mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/webm' })
 
-    const chunks: BlobPart[] = []
+        const formData = new FormData()
+        formData.append('file', blob, 'video.webm')
+        formData.append('eventId', eventId)
+        formData.append('chatId', chatId)
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunks.push(event.data)
-      }
-    }
+        try {
+          const uploadRes = await fetch('/api/upload-message-media', {
+            method: 'POST',
+            body: formData,
+          })
 
-    mediaRecorder.onstop = async () => {
-      if (chunks.length === 0) {
-        console.log('No video data recorded')
+          if (uploadRes.ok) {
+            const data = await uploadRes.json()
+            if (data.url) {
+              await sendMessage(data.url, data.type || 'video')
+            }
+          } else {
+            console.error('Upload failed:', await uploadRes.text())
+          }
+        } catch (err) {
+          console.error('Upload error:', err)
+        }
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
-        return
       }
 
-      // Use the same MIME type for blob
-      const blob = new Blob(chunks, { type: mimeType || 'video/mp4' })
-      
-      const formData = new FormData()
-      formData.append('file', blob, 'video.mp4')
-      formData.append('eventId', eventId)
-      formData.append('chatId', chatId)
+mediaRecorder.start(250) // shorter chunks for immediate send
+      setIsRecording(true)
+      setRecordingType('video')
+      setRecordingTime(0)
 
-      try {
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1)
+      }, 1000)
+
+    } catch (error) {
+      console.error('Video recording error:', error)
+    }
+  }
+
+  // Start audio recording
+  async function startAudioRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+
+      const chunks: BlobPart[] = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+
+        const formData = new FormData()
+        formData.append('file', blob, 'audio.webm')
+        formData.append('eventId', eventId)
+        formData.append('chatId', chatId)
+
         const uploadRes = await fetch('/api/upload-message-media', {
           method: 'POST',
           body: formData,
         })
 
         if (uploadRes.ok) {
-          const data = await uploadRes.json()
-          if (data.url) {
-            await sendMessage(data.url, 'video')
-          }
-        } else {
-          const errorText = await uploadRes.text()
-          console.error('Upload failed:', errorText)
+          const { url, type } = await uploadRes.json()
+          await sendMessage(url, type)
         }
-      } catch (err) {
-        console.error('Upload error:', err)
-      }
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-      }
-    }
-
-    mediaRecorder.start()
-    setIsRecording(true)
-    setRecordingType('video')
-    setRecordingTime(0)
-
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1)
-    }, 1000)
-
-  } catch (error) {
-    console.error('Video recording error:', error)
-    alert('Could not access camera. Please check permissions on your phone.')
-  }
-}
-
-// Start audio recording
-async function startAudioRecording() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    streamRef.current = stream
-
-    // Find supported audio MIME type
-    const mimeTypes = ['audio/mp4', 'audio/webm', 'audio/mpeg']
-    let mimeType = ''
-    for (const type of mimeTypes) {
-      if (MediaRecorder.isTypeSupported(type)) {
-        mimeType = type
-        break
-      }
-    }
-
-    const mediaRecorder = new MediaRecorder(stream, { mimeType })
-    mediaRecorderRef.current = mediaRecorder
-
-    const chunks: BlobPart[] = []
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunks.push(event.data)
-      }
-    }
-
-    mediaRecorder.onstop = async () => {
-      if (chunks.length === 0) {
-        console.log('No audio data recorded')
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
-        return
       }
 
-      const blob = new Blob(chunks, { type: mimeType || 'audio/mp4' })
-      
-      const formData = new FormData()
-      formData.append('file', blob, 'audio.mp4')
-      formData.append('eventId', eventId)
-      formData.append('chatId', chatId)
+      mediaRecorder.start(1000)
+      setIsRecording(true)
+      setRecordingType('audio')
+      setRecordingTime(0)
 
-      try {
-        const uploadRes = await fetch('/api/upload-message-media', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (uploadRes.ok) {
-          const data = await uploadRes.json()
-          if (data.url) {
-            await sendMessage(data.url, 'audio')
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= 14) {
+            stopRecording()
+            return 15
           }
-        } else {
-          const errorText = await uploadRes.text()
-          console.error('Upload failed:', errorText)
-        }
-      } catch (err) {
-        console.error('Upload error:', err)
-      }
+          return prev + 1
+        })
+      }, 1000)
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
-      }
+    } catch (error) {
+      console.error('Audio recording error:', error)
     }
-
-    mediaRecorder.start()
-    setIsRecording(true)
-    setRecordingType('audio')
-    setRecordingTime(0)
-
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1)
-    }, 1000)
-
-  } catch (error) {
-    console.error('Audio recording error:', error)
-    alert('Could not access microphone. Please check permissions on your phone.')
   }
-}
 
-  // Stop recording and send
-  function stopRecordingAndSend() {
+  function stopRecording() {
     if (mediaRecorderRef.current && isRecording && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
     }
@@ -529,8 +492,8 @@ async function startAudioRecording() {
 
   return (
     <main className="min-h-dvh flex flex-col bg-background">
-      {/* Recording Overlay - Now with SEND button instead of STOP */}
-      {isRecording && (
+      {/* Recording Overlay */}
+{isRecording && (
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
           <div className="text-center space-y-4">
             <div className="relative">
@@ -549,33 +512,16 @@ async function startAudioRecording() {
               Recording {recordingType === 'video' ? 'video' : 'voice note'}...
             </p>
             <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  // Cancel recording
-                  if (mediaRecorderRef.current && isRecording) {
-                    mediaRecorderRef.current.onstop = null
-                    mediaRecorderRef.current.stop()
-                  }
-                  if (recordingTimerRef.current) {
-                    clearInterval(recordingTimerRef.current)
-                  }
-                  if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop())
-                  }
-                  setIsRecording(false)
-                  setRecordingType(null)
-                  setRecordingTime(0)
-                }}
-                className="bg-gray-600 hover:bg-gray-700 text-white"
+              <Button 
+                onClick={stopRecording}
+                className="bg-white hover:bg-gray-100 text-black px-6"
               >
-                <X className="w-5 h-5 mr-2" />
                 Cancel
               </Button>
-              <Button
-                onClick={stopRecordingAndSend}
-                className="bg-green-600 hover:bg-green-700 text-white"
+              <Button 
+                onClick={stopRecording}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
               >
-                <Send className="w-5 h-5 mr-2" />
                 Send
               </Button>
             </div>
@@ -630,7 +576,8 @@ async function startAudioRecording() {
         ) : (
           messages.map((message) => {
             const isOwn = message.sender_id === session.eventUserId
-            const messageType = message.message_type || 'text'
+            const messageType = message.message_type
+              || 'text'
 
             return (
               <div
@@ -712,7 +659,7 @@ async function startAudioRecording() {
             size="icon"
             className="h-10 w-10 shrink-0"
             onClick={startVideoRecording}
-            title="Record video"
+            title="Record video (15 seconds max)"
           >
             <Video className="h-5 w-5" />
           </Button>
@@ -723,7 +670,7 @@ async function startAudioRecording() {
             size="icon"
             className="h-10 w-10 shrink-0"
             onClick={startAudioRecording}
-            title="Record voice note"
+            title="Record voice note (15 seconds max)"
           >
             <Mic className="h-5 w-5" />
           </Button>
