@@ -330,7 +330,7 @@ export default function ChatPage() {
         }
       }
 
-      mediaRecorder.onstop = async () => {
+mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/webm' })
 
         const formData = new FormData()
@@ -338,14 +338,22 @@ export default function ChatPage() {
         formData.append('eventId', eventId)
         formData.append('chatId', chatId)
 
-        const uploadRes = await fetch('/api/upload-message-media', {
-          method: 'POST',
-          body: formData,
-        })
+        try {
+          const uploadRes = await fetch('/api/upload-message-media', {
+            method: 'POST',
+            body: formData,
+          })
 
-        if (uploadRes.ok) {
-          const { url, type } = await uploadRes.json()
-          await sendMessage(url, type)
+          if (uploadRes.ok) {
+            const data = await uploadRes.json()
+            if (data.url) {
+              await sendMessage(data.url, data.type || 'video')
+            }
+          } else {
+            console.error('Upload failed:', await uploadRes.text())
+          }
+        } catch (err) {
+          console.error('Upload error:', err)
         }
 
         if (streamRef.current) {
