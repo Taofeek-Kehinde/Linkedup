@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Clock } from 'lucide-react'
+import { Clock, Mic, Video, X, Square } from 'lucide-react'
 import type { Chat, EventUser, Message, UserSession, Event } from '@/lib/types'
 import {
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, X } from 'lucide-react'
+import { MoreVertical } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getLocalSession } from '@/lib/utils/session'
@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Spinner } from '@/components/ui/spinner'
 import { ArrowLeft, Send, User, Sticker } from 'lucide-react'
 import { useCallback } from 'react'
+import EmojiPicker from 'emoji-picker-react'
 
 export default function ChatPage() {
   const params = useParams()
@@ -28,6 +29,13 @@ export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  
+  // Recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null)
+  const videoCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
   
   const [session, setSession] = useState<UserSession | null>(null)
   const [chat, setChat] = useState<Chat | null>(null)
@@ -39,6 +47,12 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [timeRemaining, setTimeRemaining] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  
+  // Recording states
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null)
+  const [recordingTime, setRecordingTime] = useState(0)
 
   // Load initial data
   useEffect(() => {
@@ -138,6 +152,18 @@ export default function ChatPage() {
     }
   }, [chat, chatId])
 
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current)
+      }
+    }
+  }, [])
+
   // Live event timer
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -185,12 +211,9 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newMessage.trim() || !session || isSending) return
+  async function sendMessage(content: string, type: 'text' | 'video' | 'audio' = 'text') {
+    if (!session || isSending) return
 
-    const messageText = newMessage.trim()
-    setNewMessage('')
     setIsSending(true)
     const replyToId = replyTo?.id || null
     setReplyTo(null)
@@ -201,17 +224,29 @@ export default function ChatPage() {
       .insert({
         chat_id: chatId,
         sender_id: session.eventUserId,
-        content: messageText,
+        content: content,
         reply_to_id: replyToId,
+        message_type: type,
       })
 
     if (error) {
-      setNewMessage(messageText) // Restore on error
+      console.error('Send error:', error)
     }
     
-    setReplyTo(null)
     setIsSending(false)
     inputRef.current?.focus()
+  }
+
+  function handleTextSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newMessage.trim() || isSending) return
+    sendMessage(newMessage.trim(), 'text')
+    setNewMessage('')
+  }
+
+  function onEmojiClick(emojiObject: any) {
+    setNewMessage(prev => prev + emojiObject.emoji)
+    setShowEmojiPicker(false)
   }
 
   function setReply(message: Message) {
@@ -220,6 +255,122 @@ export default function ChatPage() {
 
   function cancelReply() {
     setReplyTo(null)
+  }
+
+  // Start video recording
+  async function startVideoRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      streamRef.current = stream
+      
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      
+      const chunks: BlobPart[] = []
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
+      }
+      
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/mp4' })
+        const videoUrl = URL.createObjectURL(blob)
+        
+        // Send video message
+        await sendMessage(videoUrl, 'video')
+        
+        // Cleanup
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
+        }
+        URL.revokeObjectURL(videoUrl)
+      }
+      
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingType('video')
+      setRecordingTime(0)
+      
+      // Timer for 15 seconds
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= 14) {
+            stopRecording()
+            return 15
+          }
+          return prev + 1
+        })
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Video recording error:', error)
+    }
+  }
+
+  // Start audio recording
+  async function startAudioRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      
+      const chunks: BlobPart[] = []
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data)
+        }
+      }
+      
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        const audioUrl = URL.createObjectURL(blob)
+        
+        // Send audio message
+        await sendMessage(audioUrl, 'audio')
+        
+        // Cleanup
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
+        }
+        URL.revokeObjectURL(audioUrl)
+      }
+      
+      mediaRecorder.start()
+      setIsRecording(true)
+      setRecordingType('audio')
+      setRecordingTime(0)
+      
+      // Timer for 15 seconds
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= 14) {
+            stopRecording()
+            return 15
+          }
+          return prev + 1
+        })
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Audio recording error:', error)
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+    }
+    setIsRecording(false)
+    setRecordingType(null)
+    setRecordingTime(0)
   }
 
   // Beep sound using Web Audio API
@@ -232,7 +383,7 @@ export default function ChatPage() {
       oscillator.connect(gainNode)
       gainNode.connect(audioContext.destination)
 
-      oscillator.frequency.value = 800 // Hz
+      oscillator.frequency.value = 800
       oscillator.type = 'sine'
 
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
@@ -274,8 +425,38 @@ export default function ChatPage() {
 
   return (
     <main className="min-h-dvh flex flex-col bg-background">
+      {/* Recording Overlay */}
+      {isRecording && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-red-500 animate-pulse flex items-center justify-center">
+                {recordingType === 'video' ? (
+                  <Video className="w-12 h-12 text-white" />
+                ) : (
+                  <Mic className="w-12 h-12 text-white" />
+                )}
+              </div>
+              <div className="absolute -top-2 -right-2 bg-white text-black rounded-full px-2 py-1 text-sm font-bold">
+                {recordingTime}s / 15s
+              </div>
+            </div>
+            <p className="text-white text-lg font-semibold">
+              Recording {recordingType === 'video' ? 'video' : 'voice note'}...
+            </p>
+            <Button 
+              onClick={stopRecording}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Square className="w-5 h-5 mr-2" />
+              Stop Recording
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
         {/* Timer row at very top */}
         {event && timeRemaining && (
           <div className="w-full p-3 bg-gradient-to-r from-primary/20 to-primary/10 border-b border-primary/30">
@@ -359,6 +540,35 @@ export default function ChatPage() {
               )
             }
 
+            // Render message content based on type
+            const renderContent = () => {
+              const messageType = (message as any).message_type || 'text'
+              
+              if (messageType === 'video' && message.content.startsWith('blob:')) {
+                return (
+                  <video 
+                    src={message.content} 
+                    controls 
+                    className="max-w-full rounded-lg max-h-[300px]"
+                    controlsList="nodownload"
+                  />
+                )
+              }
+              
+              if (messageType === 'audio' && message.content.startsWith('blob:')) {
+                return (
+                  <audio 
+                    src={message.content} 
+                    controls 
+                    className="max-w-full"
+                    controlsList="nodownload"
+                  />
+                )
+              }
+              
+              return <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+            }
+
             return (
               <div
                 key={message.id}
@@ -379,7 +589,7 @@ export default function ChatPage() {
                       <p className="text-xs italic truncate">{replyToMsg.content}</p>
                     </div>
                   )}
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  {renderContent()}
                   <p className={`text-xs mt-1 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
                     {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -427,30 +637,67 @@ export default function ChatPage() {
           </div>
         )}
         <div className="flex gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0">
-                <Sticker className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="p-4 pt-0 h-[400px]">
-              <div className="grid grid-cols-10 gap-2 p-4 max-h-[300px] overflow-y-auto">
-                {['😀', '😂', '😍', '🤔', '😎', '🥳', '😢', '😡', '👍', '❤️', '🔥', '⭐', '🎉', '🚀', '💯', '👏', '🙌', '🤝', '✨', '🌟', '💥', '⚡', '🔔', '📱'].map((emoji) => (
+          {/* Video Recording Button */}
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 shrink-0"
+            onClick={startVideoRecording}
+            title="Record video (15 seconds max)"
+          >
+            <Video className="h-5 w-5" />
+          </Button>
+
+          {/* Audio Recording Button */}
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 shrink-0"
+            onClick={startAudioRecording}
+            title="Record voice note (15 seconds max)"
+          >
+            <Mic className="h-5 w-5" />
+          </Button>
+
+          {/* Sticker/Emoji Button with real emoji picker */}
+          <div className="relative">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 shrink-0"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              title="Add emoji"
+            >
+              <Sticker className="h-5 w-5" />
+            </Button>
+            
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 right-0 z-50">
+                <div className="relative">
+                  <EmojiPicker 
+                    onEmojiClick={onEmojiClick}
+                    autoFocusSearch={false}
+                    skinTonesDisabled
+                    searchPlaceholder="Search emojis..."
+                    width={320}
+                    height={400}
+                  />
                   <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      setNewMessage(emoji)
-                    }}
-                    className="w-12 h-12 rounded-lg hover:bg-accent p-2 flex items-center justify-center text-2xl transition-colors cursor-pointer"
+                    onClick={() => setShowEmojiPicker(false)}
+                    className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full p-1"
                   >
-                    {emoji}
+                    <X className="h-4 w-4" />
                   </button>
-                ))}
+                </div>
               </div>
-            </SheetContent>
-          </Sheet>
-          <form id="message-form" onSubmit={sendMessage} className="flex-1 flex gap-2">
+            )}
+          </div>
+
+          {/* Text Input Form */}
+          <form onSubmit={handleTextSubmit} className="flex-1 flex gap-2">
             <Input
               ref={inputRef}
               placeholder="Type a message..."
@@ -472,4 +719,3 @@ export default function ChatPage() {
     </main>
   )
 }
-
