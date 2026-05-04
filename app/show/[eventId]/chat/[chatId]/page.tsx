@@ -367,7 +367,13 @@ mediaRecorder.start(250) // shorter chunks for immediate send
       setRecordingTime(0)
 
       recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1)
+        setRecordingTime(prev => {
+          if (prev >= 14) {
+            stopRecording()
+            return 15
+          }
+          return prev + 1
+        })
       }, 1000)
 
     } catch (error) {
@@ -511,20 +517,9 @@ mediaRecorder.start(250) // shorter chunks for immediate send
             <p className="text-white text-lg font-semibold">
               Recording {recordingType === 'video' ? 'video' : 'voice note'}...
             </p>
-            <div className="flex gap-3">
-              <Button 
-                onClick={stopRecording}
-                className="bg-white hover:bg-gray-100 text-black px-6"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={stopRecording}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
-              >
-                Send
-              </Button>
-            </div>
+            <p className="text-white text-sm">
+              Auto-send in {15 - recordingTime}s
+            </p>
           </div>
         </div>
       )}

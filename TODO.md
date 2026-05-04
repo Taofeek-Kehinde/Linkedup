@@ -1,8 +1,9 @@
-# Fix Next.js Dev Startup - TODO (Resolved PostCSS, now bin issue)
+# Auto-recording Changes TODO
 
 ## Steps:
-- [x] 1. Run `pnpm install` (initial - partial, fixed PostCSS)
-- [ ] 2. Fresh clean `pnpm install` to fix Next.js bin links
-- [ ] 3. Run `pnpm dev`
-- [ ] 4. Verify http://localhost:3000 loads (no PostCSS or bin errors)
-- [ ] 5. Mark complete
+1. [x] Add 15s auto-stop to video recording timer in startVideoRecording()
+2. [x] Remove Cancel and Send buttons from recording overlay
+3. [x] Update video record button title to reflect 15s max
+4. [x] Test recording: both audio/video auto-send at 15s without buttons
+
+Progress will be updated after each step.
