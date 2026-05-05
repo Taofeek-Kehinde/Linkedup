@@ -156,17 +156,15 @@ if (hostData) {
 return (
     <main className="fixed inset-0 w-full overflow-hidden">
       {/* Background with host selfie */}
-      {hostSelfieUrl ? (
-        <>
+        {event?.host_selfie_url ? (
           <div 
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${hostSelfieUrl})` }}
+            style={{ backgroundImage: `url(${event.host_selfie_url})` }}
           />
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-        </>
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900" />
-      )}
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900" />
+        )}
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
       

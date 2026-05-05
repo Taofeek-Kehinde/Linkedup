@@ -11,6 +11,7 @@ export interface Event {
   starts_at: string | null
   ends_at: string | null
   scheduled_start_at: string | null
+  host_selfie_url: string | null
   created_at: string
 }
 

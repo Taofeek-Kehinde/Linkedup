@@ -712,15 +712,15 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          {event.status === 'live' && (
+{event.status === 'live' && (
             <Button 
               variant="outline"
               className="w-full" 
               size="lg"
-              onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}
+              onClick={() => router.push('/admin-self?eventId=' + event.id)}
             >
               <Users className="mr-2 h-5 w-5" />
-              SET UP HOST EVENT
+              SETUP HOST PROFILE
             </Button>
           )}
           {event.status === 'upcoming' && (
