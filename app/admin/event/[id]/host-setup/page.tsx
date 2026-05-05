@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge' 
 import { Button } from '@/components/ui/button'
@@ -22,18 +22,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   const [isVipMode, setIsVipMode] = useState(false)
   const [userMessage, setUserMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [imageError, setImageError] = useState(false)
-
-  // Function to get optimized background image URL
-  const getOptimizedBgUrl = (url: string) => {
-    if (!url) return ''
-    // Add parameters for better quality
-    if (url.includes('supabase.co')) {
-      const separator = url.includes('?') ? '&' : '?'
-      return `${url}${separator}width=1920&height=1080&quality=100&resize=cover`
-    }
-    return url
-  }
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function loadEvent() {
@@ -70,7 +60,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
         setHostUser(hostData)
       }
 
-      // Load VIP users for this event
       const { data: vipData } = await supabase
         .from('event_users')
         .select('*')
@@ -103,7 +92,6 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
     }
   }, [eventId, router])
 
-  const hostSelfieUrl = hostUser?.selfie_url || null
   const eventLocation = event?.locations?.[0] || event?.location || 'Venue'
 
   useEffect(() => {
@@ -153,17 +141,8 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
     setIsSending(true)
     
     try {
-      const supabase = createClient()
-      
-      // Here you can send the message to a chat or broadcast
       console.log('Sending message:', userMessage)
-      
-      // Show success feedback
       setUserMessage('')
-      
-      // Optional: Add toast notification
-      // toast({ title: 'Message sent!', description: 'Your message has been broadcast.' })
-      
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
@@ -185,115 +164,112 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <main className="fixed inset-0 w-full h-full overflow-hidden">
-      {/* Background with host selfie - Enhanced for sharpness and clarity */}
+    <main className="fixed inset-0 w-full h-full overflow-hidden" ref={containerRef}>
+      {/* Background Image - Enhanced for perfect clarity */}
       <div className="absolute inset-0 w-full h-full">
-        {event?.host_selfie_url && !imageError ? (
-          <div className="relative w-full h-full">
-            <Image
-              src={getOptimizedBgUrl(event.host_selfie_url)}
-              alt="Event Background"
-              fill
-              priority
-              quality={100}
-              className="object-cover object-center"
-              onError={() => setImageError(true)}
-              sizes="100vw"
-              style={{ objectFit: 'cover', objectPosition: 'center' }}
+        {event?.host_selfie_url ? (
+          <>
+            {/* Preload image for better quality */}
+            <div 
+              className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${event.host_selfie_url})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 30%',
+                backgroundRepeat: 'no-repeat',
+                filter: 'brightness(0.85) contrast(1.05) saturate(1.1)',
+              }}
             />
-            {/* Dynamic overlay based on image brightness - lighter overlay for better visibility */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-          </div>
+            {/* Subtle gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+          </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900" />
         )}
       </div>
       
-      {/* Gradient overlays for better text visibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
-      
-      {/* Content - Fixed height, no scrolling */}
+      {/* Content */}
       <div className="relative z-10 h-full flex flex-col px-6">
-        {/* Header Section - At the very top */}
-        <div className="text-center pt-6 flex-shrink-0">
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xl">
+        {/* Header Section */}
+        <div className="text-center pt-8 flex-shrink-0">
+          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-2xl">
             {event.show_name}
           </h1>
-          <div className="flex items-center justify-center gap-2 text-base text-white/90 font-semibold mt-2 drop-shadow-lg">
+          <div className="flex items-center justify-center gap-2 text-lg text-white/90 font-bold mt-2 drop-shadow-lg">
             <MapPin className="w-5 h-5" />
             <span>{eventLocation}</span>
           </div>
           {event.status === 'live' && (
-            <Badge variant="default" className="mt-3 bg-green-500/30 text-green-400 border-green-500/50 text-sm font-bold px-4 py-1">
+            <Badge variant="default" className="mt-3 bg-green-500/40 text-green-300 border-green-500/50 text-sm font-bold px-4 py-1.5 backdrop-blur-sm">
               LIVE NOW
             </Badge>
           )}
         </div>
 
-        {/* VIP, Timer, Host - Right after location at the top */}
-        <div className="flex justify-center items-center mt-6 flex-shrink-0">
-          <div className="bg-white/15 backdrop-blur-md rounded-[60px] p-2 flex gap-4 items-center shadow-2xl">
-            {/* VIP - Left */}
+        {/* VIP, Timer, Host - Smaller circles, timer without background */}
+        <div className="flex justify-center items-center mt-8 flex-shrink-0">
+          <div className="flex gap-6 items-center">
+            {/* VIP Button - Smaller */}
             <Button 
               onClick={handleVipClick}
-              className={`w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-0 ${isVipMode ? 'ring-4 ring-yellow-400 scale-105 shadow-2xl' : 'shadow-xl'}`}
+              className={`w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-0 ${isVipMode ? 'ring-4 ring-yellow-400 scale-105' : ''}`}
             >
-              <Crown className={`w-7 h-7 ${isVipMode ? 'text-yellow-400' : 'text-white'}`} />
-              <span className="text-sm font-bold mt-1">VIP</span>
+              <Crown className={`w-6 h-6 ${isVipMode ? 'text-yellow-400' : 'text-white'}`} />
+              <span className="text-xs font-bold mt-0.5">VIP</span>
             </Button>
 
-            {/* Timer - Center - Removed clock icon, increased font */}
-            <div className="w-32 h-24 rounded-full bg-black/60 backdrop-blur-md flex flex-col items-center justify-center border-2 border-white/30 shadow-2xl">
-              <span className="font-mono font-black text-white text-2xl tracking-wider drop-shadow-lg">
+            {/* Timer - Large text, no background */}
+            <div className="flex flex-col items-center">
+              <span className="font-mono font-black text-white text-5xl md:text-6xl tracking-wider drop-shadow-2xl">
                 {timeRemaining}
               </span>
             </div>
 
-            {/* HOST - Right */}
+            {/* HOST Button - Smaller */}
             <Button 
               onClick={handleHostClick}
-              className="w-24 h-24 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-0"
+              className="w-16 h-16 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-0"
             >
-              <span className="text-xl font-black tracking-wide">HOST</span>
+              <span className="text-base font-black tracking-wide">HOST</span>
             </Button>
           </div>
         </div>
 
-        {/* VIP Users List - Shows when VIP button is active */}
+        {/* VIP Users List */}
         {isVipMode && (
-          <div className="flex-1 overflow-y-auto mt-4">
+          <div className="flex-1 overflow-y-auto mt-6">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Crown className="w-5 h-5 text-yellow-400" />
-              <span className="text-yellow-400 font-bold text-lg">VIP ({vipUsers.length})</span>
+              <span className="text-yellow-400 font-bold text-base">VIP ({vipUsers.length})</span>
             </div>
             {vipUsers.length > 0 ? (
-              <div className="flex flex-wrap gap-3 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {vipUsers.map((vip) => (
                   <div 
                     key={vip.id} 
-                    className="flex items-center gap-2 bg-white/20 backdrop-blur-md rounded-full pr-4 pl-1 py-1 shadow-lg border border-white/20"
+                    className="flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full pr-3 pl-1 py-1 shadow-lg border border-white/20"
                   >
                     {vip.selfie_url ? (
-                      <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden">
                         <Image 
                           src={vip.selfie_url} 
                           alt={vip.username}
                           fill
                           className="object-cover"
-                          sizes="40px"
+                          sizes="32px"
                         />
                       </div>
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-yellow-500/50 flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
+                      <div className="w-8 h-8 rounded-full bg-yellow-500/50 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
                       </div>
                     )}
-                    <span className="text-white font-semibold">{vip.username}</span>
+                    <span className="text-white text-sm font-semibold">{vip.username}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-white/60 text-center text-base">No VIPs yet</p>
+              <p className="text-white/60 text-center text-sm">No VIPs yet</p>
             )}
           </div>
         )}
@@ -301,36 +277,30 @@ export default function HosterPage({ params }: { params: Promise<{ id: string }>
         {/* Spacer to push input to bottom */}
         <div className="flex-1"></div>
 
-        {/* Input Section - Replaced PASS and PEEP buttons */}
-        <div className="max-w-md mx-auto w-full pb-6 flex-shrink-0">
-          <div className="bg-white/10 backdrop-blur-md rounded-full p-1 flex gap-2 shadow-2xl border border-white/20">
+        {/* Input Section - Send icon only */}
+        <div className="max-w-lg mx-auto w-full pb-8 flex-shrink-0">
+          <div className="bg-black/40 backdrop-blur-lg rounded-full p-1.5 flex gap-2 shadow-2xl border border-white/20">
             <input
               type="text"
               value={userMessage}
               onChange={(e) => setUserMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Type your message here..."
-              className="flex-1 bg-transparent text-white placeholder-white/60 px-4 py-3 outline-none text-base font-medium"
+              placeholder="Type your message..."
+              className="flex-1 bg-transparent text-white placeholder-white/60 px-5 py-3 outline-none text-base font-medium"
               disabled={isSending}
             />
             <Button
               onClick={handleSendMessage}
               disabled={!userMessage.trim() || isSending}
-              className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-3 h-auto shadow-xl font-bold"
+              className="rounded-full w-12 h-12 p-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-xl"
             >
               {isSending ? (
                 <Spinner className="w-5 h-5" />
               ) : (
-                <>
-                  <Send className="w-5 h-5 mr-2" />
-                  Send
-                </>
+                <Send className="w-5 h-5" />
               )}
             </Button>
           </div>
-          <p className="text-white/50 text-xs text-center mt-2">
-            Share your thoughts with everyone
-          </p>
         </div>
       </div>
     </main>
