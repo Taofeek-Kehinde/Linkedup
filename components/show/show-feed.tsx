@@ -298,53 +298,19 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
             // User cards
             <div className="flex-1 relative">
               {/* Navigation buttons */}
-              {users.length > 1 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/50 backdrop-blur-sm"
-                    onClick={handlePrevious}
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/50 backdrop-blur-sm"
-                    onClick={handleNext}
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </Button>
-                </>
-              )}
+
 
               {/* Current user card */}
               {currentViewUser && (
                 <UserCard 
                   user={currentViewUser} 
                   onChat={() => handleStartChat(currentViewUser)}
+                  onPass={handleNext}
                   canChat={true}
                 />
               )}
 
-              {/* Pagination dots */}
-              {users.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-                  {users.slice(0, 10).map((_, idx) => (
-                    <button
-                      key={idx}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        idx === currentIndex ? 'bg-primary' : 'bg-muted'
-                      }`}
-                      onClick={() => setCurrentIndex(idx)}
-                    />
-                  ))}
-                  {users.length > 10 && (
-                    <span className="text-xs text-muted-foreground ml-1">+{users.length - 10}</span>
-                  )}
-                </div>
-              )}
+
             </div>
           )}
         </div>

@@ -9,10 +9,11 @@ import type { EventUser } from '@/lib/types'
 interface UserCardProps {
   user: EventUser
   onChat: () => void
+  onPass: () => void
   canChat: boolean
 }
 
-export function UserCard({ user, onChat, canChat }: UserCardProps) {
+export function UserCard({ user, onChat, onPass, canChat }: UserCardProps) {
   return (
     <div className="h-full flex items-center justify-center p-6">
       <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -63,31 +64,23 @@ export function UserCard({ user, onChat, canChat }: UserCardProps) {
             </div>
             <p className="text-sm font-mono text-primary">{user.vibe_key}</p>
 
-            {/* Chat button */}
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={onChat}
-              disabled={!canChat}
-            >
-              {canChat ? (
-                <>
-                  <MessageCircle className="mr-2 h-5 w-5" />
-                  Start Chat
-                </>
-              ) : (
-                <>
-                  <Lock className="mr-2 h-5 w-5" />
-                  Chat Limit Reached
-                </>
-              )}
-            </Button>
-
-            {!canChat && (
-              <p className="text-xs text-center text-muted-foreground">
-                Upgrade to chat with more people
-              </p>
-            )}
+            {/* Pass / Peep buttons on image - but since image is above, move to overlay? Wait, replace with info overlay buttons */}
+            <div className="flex gap-4 pt-2">
+              <Button 
+                className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                size="lg"
+                onClick={onPass}
+              >
+                Pass
+              </Button>
+              <Button 
+                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                size="lg"
+                onClick={onChat}
+              >
+                Peep
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
