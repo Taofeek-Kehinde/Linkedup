@@ -67,14 +67,14 @@ export function UserCard({ user, onChat, onPass, canChat }: UserCardProps) {
             {/* Pass / Peep buttons on image - but since image is above, move to overlay? Wait, replace with info overlay buttons */}
             <div className="flex gap-4 pt-2">
               <Button 
-                className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="flex-1 h-14 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 size="lg"
                 onClick={onPass}
               >
                 Pass
               </Button>
               <Button 
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                className="flex-1 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white"
                 size="lg"
                 onClick={onChat}
               >
