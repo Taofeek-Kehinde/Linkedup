@@ -18,7 +18,7 @@ function AdminSelfContent() {
   const [isUploading, setIsUploading] = useState(false)
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
-  const handleSelfieCapture = (blob) => {
+  const handleSelfieCapture = (blob: Blob | null) => {
     if (blob) {
       const reader = new FileReader()
       reader.onload = () => {
