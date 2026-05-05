@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Event, EventUser } from '@/lib/types'
 import { QRCodeCanvas } from 'qrcode.react'
+import Image from 'next/image'
 
 export default function EventDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -49,9 +50,29 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [isAutoStarting, setIsAutoStarting] = useState(false)
   const [autoStartTriggered, setAutoStartTriggered] = useState(false)
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
   const qrRef = useRef<HTMLCanvasElement>(null)
   
   const { toast } = useToast()
+
+  // Function to get optimized image URL with transformations
+  const getOptimizedImageUrl = (url: string, size: number = 100) => {
+    if (!url) return ''
+    
+    // If using Supabase storage, add transformation parameters
+    if (url.includes('supabase.co')) {
+      // Add query parameters for image optimization
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}width=${size}&height=${size}&resize=cover&quality=90`
+    }
+    
+    return url
+  }
+
+  // Function to handle image loading errors
+  const handleImageError = (userId: string) => {
+    setImageErrors(prev => ({ ...prev, [userId]: true }))
+  }
 
   const handleAutoStart = useCallback(async () => {
     // Add null check for event
@@ -766,34 +787,53 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="space-y-2">
               {users.map(user => (
-                <Card key={user.id} className="border-border/50 bg-card/30">
+                <Card key={user.id} className="border-border/50 bg-card/30 hover:bg-card/50 transition-colors">
                   <CardContent className="p-3 flex items-center gap-3">
-                    {user.selfie_url ? (
-                      <img 
-                        src={user.selfie_url} 
-                        alt={user.username}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-sm font-medium">
-                        {user.username.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
+                    {/* Enhanced image with better styling */}
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-primary/20 shadow-lg flex-shrink-0">
+                      {user.selfie_url && !imageErrors[user.id] ? (
+                        <Image
+                          src={getOptimizedImageUrl(user.selfie_url, 96)}
+                          alt={user.username}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                          priority={false}
+                          quality={90}
+                          onError={() => handleImageError(user.id)}
+                          style={{ objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                          <span className="text-sm font-bold text-foreground">
+                            {user.username.slice(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">{user.username}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">{user.username}</p>
+                        {user.is_vip && (
+                          <Badge variant="default" className="text-xs bg-yellow-500/20 text-yellow-500 border-yellow-500/30">
+                            VIP
+                          </Badge>
+                        )}
+                        {user.is_upgraded && !user.is_vip && (
+                          <Badge variant="secondary" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+                            Upgraded
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground font-mono">{user.vibe_key}</p>
                     </div>
-                    {user.is_vip && (
-                      <Badge variant="default" className="text-xs bg-yellow-500">VIP</Badge>
-                    )}
-                    {user.is_upgraded && (
-                      <Badge variant="secondary" className="text-xs">Upgraded</Badge>
-                    )}
+                    
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => toggleVip(user)}
-                      className={user.is_vip ? 'text-yellow-500' : 'text-muted-foreground'}
+                      className={user.is_vip ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20' : ''}
                     >
                       {user.is_vip ? 'Remove VIP' : 'Make VIP'}
                     </Button>
