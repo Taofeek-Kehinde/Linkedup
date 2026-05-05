@@ -158,12 +158,20 @@ return (
       {/* Background with host selfie */}
         {event?.host_selfie_url ? (
           <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${event.host_selfie_url})` }}
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat object-cover object-center"
+            style={{ 
+              backgroundImage: `url(${event.host_selfie_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              width: '100vw',
+              height: '100vh'
+            }}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900" />
         )}
+
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />

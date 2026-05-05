@@ -18,70 +18,52 @@ function AdminSelfContent() {
   const [isUploading, setIsUploading] = useState(false)
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
-  const handleSelfieCapture = (blob: Blob | null) => {
+  const handleSelfieCapture = async (blob: Blob | null) => {
     if (blob) {
       const reader = new FileReader()
-      reader.onload = () => {
-        setSelfieUrl(reader.result as string)
-        console.log('Selfie captured:', reader.result)
+      reader.onload = async () => {
+        const dataUrl = reader.result as string
+        console.log('Selfie captured:', dataUrl)
+        
+        // Auto-save immediately
+        if (eventId) {
+          try {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+              const { error } = await supabase
+                .from('events')
+                .update({ host_selfie_url: dataUrl })
+                .eq('id', eventId)
+                .eq('host_id', user.id)
+              
+              if (error) {
+                console.error('Save error:', error)
+                toast({
+                  title: 'Error',
+                  description: 'Failed to save photo: ' + error.message,
+                  variant: 'destructive'
+                })
+              } else {
+                toast({
+                  title: 'Success',
+                  description: 'Host profile photo saved as background!'
+                })
+                router.push(`/admin/event/${eventId}/host-setup`)
+              }
+            }
+          } catch (error) {
+            console.error('Auto-save error:', error)
+            toast({
+              title: 'Error',
+              description: 'Failed to save photo',
+              variant: 'destructive'
+            })
+          }
+        }
+        setSelfieUrl(dataUrl)
       }
       reader.readAsDataURL(blob)
-    } else {
-      console.log('No blob received')
-    }
-  }
-
-  const handleSaveSelfie = async () => {
-    if (!eventId || !selfieUrl) {
-      toast({
-        title: 'Error',
-        description: 'Event ID or selfie missing',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setIsUploading(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'Not authenticated',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      const { error } = await supabase
-        .from('events')
-        .update({ host_selfie_url: selfieUrl })
-        .eq('id', eventId)
-        .eq('host_id', user.id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Supabase error:', error)
-        throw error
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Host profile photo saved!'
-      })
-
-      router.push(`/admin/event/${eventId}/host-setup`)
-    } catch (error) {
-      console.error('Save error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to save photo',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsUploading(false)
     }
   }
 
@@ -114,22 +96,7 @@ function AdminSelfContent() {
         />
       </div>
 
-      <div className="p-6">
-        <Button 
-          onClick={handleSaveSelfie}
-          disabled={!selfieUrl || isUploading}
-          className="w-full h-14 text-lg font-bold"
-        >
-          {isUploading ? (
-            <>
-              <Spinner className="mr-2" />
-              Saving...
-            </>
-          ) : (
-            'Save Host Photo'
-          )}
-        </Button>
-      </div>
+      {/* Save button removed - auto-save on "Use Photo" */}
     </main>
   )
 }
