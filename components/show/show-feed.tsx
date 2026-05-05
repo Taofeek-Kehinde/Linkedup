@@ -19,7 +19,8 @@ import {
 } from 'lucide-react'
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
-import type { Event, EventUser, UserSession, Chat } from '@/lib/types'
+import type { Event, EventUser, UserSession, Chat, Message } from '@/lib/types'
+import { useRef } from 'react'
 
 interface ShowFeedProps {
   event: Event
@@ -36,6 +37,86 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   const [showChats, setShowChats] = useState(false)
   const [chats, setChats] = useState<Chat[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null)
+  const soundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Notification functions
+  const playNotificationSound = useCallback(() => {
+    if (soundTimeoutRef.current) clearTimeout(soundTimeoutRef.current)
+
+    soundTimeoutRef.current = setTimeout(() => {
+      const audio = new Audio('/notification.mp3')
+      audio.volume = 1.0
+      audio.play().catch(e => console.log('Audio play failed:', e))
+    }, 100)
+  }, [])
+
+  const showBrowserNotification = useCallback((title: string, body: string) => {
+    if ('Notification' in window && notificationPermission === 'granted') {
+      new Notification(title, { body, icon: '/logo.png', tag: 'message-notification' })
+    }
+  }, [notificationPermission])
+
+  // Request notification permission
+  useEffect(() => {
+    if ('Notification' in window && notificationPermission === 'default') {
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission as 'granted' | 'denied')
+      })
+    }
+  }, [notificationPermission])
+
+  // Preload notification sound
+  useEffect(() => {
+    const audio = new Audio('/notification.mp3')
+    audio.preload = 'auto'
+    audio.volume = 1.0
+    notificationAudioRef.current = audio
+  }, [])
+
+  // Global visibility change listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && notificationPermission === 'granted') {
+        // Optional: update badge or something
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [notificationPermission])
+
+  // Global message subscription for notifications (all event messages)
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`event-${event.id}-messages-notif`)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `event_id=eq.${event.id}` 
+        },
+        (payload) => {
+          const newMsg = payload.new as Message
+          if (newMsg.sender_id !== currentUser.id && document.hidden) {
+            showBrowserNotification(
+              'New Message',
+              newMsg.content?.slice(0, 50) + '...' || 'New message'
+            )
+            playNotificationSound()
+            setUnreadCount(prev => prev + 1)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [event.id, currentUser.id, notificationPermission, showBrowserNotification, playNotificationSound])
 
   // Load users
   const loadUsers = useCallback(async () => {
@@ -227,10 +308,8 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               onClick={() => setShowChats(!showChats)}
             >
               <MessageCircle className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-xs flex items-center justify-center text-accent-foreground">
-                  {unreadCount}
-                </span>
+{unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
               )}
             </Button>
             <Button variant="ghost" size="icon" onClick={handleLeave}>
