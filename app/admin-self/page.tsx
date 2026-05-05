@@ -18,8 +18,17 @@ function AdminSelfContent() {
   const [isUploading, setIsUploading] = useState(false)
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
 
-  const handleSelfieCapture = async (selfieUrl: string) => {
-    setSelfieUrl(selfieUrl)
+  const handleSelfieCapture = (blob) => {
+    if (blob) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setSelfieUrl(reader.result as string)
+        console.log('Selfie captured:', reader.result)
+      }
+      reader.readAsDataURL(blob)
+    } else {
+      console.log('No blob received')
+    }
   }
 
   const handleSaveSelfie = async () => {

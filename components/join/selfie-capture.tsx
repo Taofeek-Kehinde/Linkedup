@@ -104,7 +104,9 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
   function confirmPhoto() {
     if (!canvasRef.current) return
     
+    console.log('Confirm photo clicked')
     canvasRef.current.toBlob((blob) => {
+      console.log('Blob generated:', blob)
       onCapture(blob)
     }, 'image/jpeg', 0.8)
   }
