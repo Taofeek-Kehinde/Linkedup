@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -9,7 +10,7 @@ import { ArrowLeft } from 'lucide-react'
 import { SelfieCapture } from '@/components/join/selfie-capture'
 import { useToast } from '@/components/ui/use-toast'
 
-export default function AdminSelfPage() {
+function AdminSelfContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const eventId = searchParams.get('eventId')
@@ -57,7 +58,6 @@ export default function AdminSelfPage() {
         description: 'Host profile photo saved!'
       })
 
-      // Redirect back to host-setup
       router.push(`/admin/event/${eventId}/host-setup`)
     } catch (error) {
       console.error('Save error:', error)
@@ -117,6 +117,16 @@ export default function AdminSelfPage() {
         </Button>
       </div>
     </main>
+  )
+}
+
+export default function AdminSelfPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-dvh">
+      <Spinner className="w-8 h-8" />
+    </div>}>
+      <AdminSelfContent />
+    </Suspense>
   )
 }
 
