@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
 import { 
   Users, 
@@ -40,15 +39,43 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null)
   const soundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const chatIdsRef = useRef<Set<string>>(new Set())
+  const notificationPermissionRef = useRef(notificationPermission)
+  const showBrowserNotificationRef = useRef<((title: string, body: string) => void) | null>(null)
+  const playNotificationSoundRef = useRef<(() => void) | null>(null)
 
-  // Notification functions
+  // Keep refs updated
+  useEffect(() => {
+    notificationPermissionRef.current = notificationPermission
+  }, [notificationPermission])
+
+  // Notification functions - declared BEFORE they're used
   const playNotificationSound = useCallback(() => {
     if (soundTimeoutRef.current) clearTimeout(soundTimeoutRef.current)
 
     soundTimeoutRef.current = setTimeout(() => {
-      const audio = new Audio('/notification.mp3')
+      // Try to play the notification sound first
+      const audio = new Audio('/Notification.mp3')
       audio.volume = 1.0
-      audio.play().catch(e => console.log('Audio play failed:', e))
+      audio.play().catch(() => {
+        // Fallback: play a beep sound using Web Audio API
+        try {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const oscillator = audioContext.createOscillator()
+          const gainNode = audioContext.createGain()
+          oscillator.connect(gainNode)
+          gainNode.connect(audioContext.destination)
+          oscillator.frequency.value = 800
+          oscillator.type = 'sine'
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+          oscillator.start(audioContext.currentTime)
+          oscillator.stop(audioContext.currentTime + 0.2)
+          setTimeout(() => audioContext.close(), 300)
+        } catch (e) {
+          console.log('Audio not supported', e)
+        }
+      })
     }, 100)
   }, [])
 
@@ -57,6 +84,19 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       new Notification(title, { body, icon: '/logo.png', tag: 'message-notification' })
     }
   }, [notificationPermission])
+
+  // Update refs when functions change
+  useEffect(() => {
+    showBrowserNotificationRef.current = showBrowserNotification
+  }, [showBrowserNotification])
+
+  useEffect(() => {
+    playNotificationSoundRef.current = playNotificationSound
+  }, [playNotificationSound])
+
+  useEffect(() => {
+    chatIdsRef.current = new Set(chats.map(c => c.id))
+  }, [chats])
 
   // Request notification permission
   useEffect(() => {
@@ -69,7 +109,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
 
   // Preload notification sound
   useEffect(() => {
-    const audio = new Audio('/notification.mp3')
+    const audio = new Audio('/Notification.mp3')
     audio.preload = 'auto'
     audio.volume = 1.0
     notificationAudioRef.current = audio
@@ -89,6 +129,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   // Global message subscription for notifications (all event messages)
   useEffect(() => {
     const supabase = createClient()
+    
     const channel = supabase
       .channel(`event-${event.id}-messages-notif`)
       .on(
@@ -96,17 +137,19 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'messages',
-          filter: `event_id=eq.${event.id}` 
+          table: 'messages'
         },
         (payload) => {
           const newMsg = payload.new as Message
-          if (newMsg.sender_id !== currentUser.id && document.hidden) {
-            showBrowserNotification(
-              'New Message',
-              newMsg.content?.slice(0, 50) + '...' || 'New message'
-            )
-            playNotificationSound()
+          // Check if message is from a chat in this event and not from current user
+          if (chatIdsRef.current.has(newMsg.chat_id) && newMsg.sender_id !== currentUser.id) {
+            if (document.hidden && notificationPermissionRef.current === 'granted') {
+              showBrowserNotificationRef.current?.(
+                'New Message',
+                newMsg.content?.slice(0, 50) + '...' || 'New message'
+              )
+            }
+            playNotificationSoundRef.current?.()
             setUnreadCount(prev => prev + 1)
           }
         }
@@ -116,7 +159,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [event.id, currentUser.id, notificationPermission, showBrowserNotification, playNotificationSound])
+  }, [event.id, currentUser.id])
 
   // Load users
   const loadUsers = useCallback(async () => {
@@ -305,10 +348,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               variant={showChats ? "secondary" : "ghost"}
               size="icon"
               className="relative"
-              onClick={() => setShowChats(!showChats)}
+              onClick={() => {
+                setShowChats(!showChats)
+                if (unreadCount > 0) setUnreadCount(0)
+              }}
             >
               <MessageCircle className="h-5 w-5" />
-{unreadCount > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
               )}
             </Button>
@@ -397,4 +443,3 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     </main>
   )
 }
-

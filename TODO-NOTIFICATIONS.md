@@ -1,8 +1,14 @@
 # Chat Notifications TODO
 
-## Steps:
-1. [x] Update components/show/show-feed.tsx: Full notification feature (browser Notification API + /notification.mp3 sound, debounced, document.hidden only, global event messages)
-2. [ ] Request Notification.permission, play sound on newMsg (debounced), only when document.hidden
-3. [ ] Test: New messages trigger loud notification even for unread chats
+## Completed Changes:
+1. [x] Fixed sound file path: `/notification.mp3` → `/Notification.mp3` (case-sensitive servers)
+2. [x] Fixed message subscription to properly filter by chat_id instead of non-existent event_id column
+3. [x] Green dot now shows for new messages even when tab is visible (removed `document.hidden` restriction)
+4. [x] Added Web Audio API fallback beep when Notification.mp3 fails to play (browser autoplay policy)
+5. [x] Reset unread count when opening chat list
+6. [x] Added chatIdsRef to keep chat IDs updated without re-subscribing
 
-Progress updated.
+## Technical Details:
+- Messages table uses `chat_id` FK, not `event_id` directly - subscription now checks chat ID membership via ref
+- Browser notification only shows when tab is hidden (correct behavior - notifications are intrusive)
+- Sound plays for all new messages regardless of tab visibility
