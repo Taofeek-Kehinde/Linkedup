@@ -59,8 +59,13 @@ function AdminSelfContent() {
         .update({ host_selfie_url: selfieUrl })
         .eq('id', eventId)
         .eq('host_id', user.id)
+        .select()
+        .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
 
       toast({
         title: 'Success',
