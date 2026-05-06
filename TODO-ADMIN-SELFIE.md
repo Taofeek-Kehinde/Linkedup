@@ -1,18 +1,19 @@
-# Admin Host Selfie Setup TODO
+# TODO-ADMIN-SELFIE
 
-## Plan:
-1. [ ] Create `app/admin-self/page.tsx` - selfie capture page
-2. [ ] Add SQL for `events.host_selfie_url` column
-3. [ ] Update `[id]/host-setup/page.tsx`:
-   - Button "SETUP HOST PROFILE" → router.push('/admin-self')
-   - Use `event.host_selfie_url` as background image
-4. [ ] `/admin-self` → upload selfie → save to `events.host_selfie_url`
-5. [ ] Test flow
+## Plan / Fixes
+- Fix admin-self selfie flow so that clicking **Use Photo** actually saves to Supabase and then redirects.
+- Ensure `SelfieCapture` calls the `onCapture` prop with the blob, and that `app/admin-self/page.tsx` passes a handler that persists the blob (not only sets local state).
+- Add loading state + disable button while saving, and handle blob null case.
+- (Optional) Fix Next Image quality warning by updating Next config `images.qualities`.
 
-## Steps:
-1. [ ] Create SQL migration
-2. [ ] Create admin-self page
-3. [ ] Update host-setup navigation
-4. [ ] Update host-setup background
-5. [ ] Test complete flow
+## Progress
+- [x] Locate current selfie flow (SelfieCapture -> onCapture -> save logic in `app/admin-self/page.tsx`)
+- [x] Implement upload + redirect in `app/admin-self/page.tsx`
+
+- [x] Wire `uploadSelfie` from `lib/utils/upload-selfie.ts` into the save handler
+
+- [ ] Update UI: loading + error messaging
+- [ ] Verify redirect URL: `/admin/event/${eventId}/host-setup`
+- [ ] Run dev/build checks
+
 

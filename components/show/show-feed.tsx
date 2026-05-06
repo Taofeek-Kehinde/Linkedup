@@ -14,12 +14,21 @@ import {
   LogOut, 
   ChevronLeft, 
   ChevronRight,
-  MapPin
+  MapPin,
+  Crown,
+  X
 } from 'lucide-react'
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
 import type { Event, EventUser, UserSession, Chat, Message } from '@/lib/types'
 import { useRef } from 'react'
+
+interface BroadcastMessage {
+  id: string
+  content: string
+  sender_name: string
+  created_at: string
+}
 
 interface ShowFeedProps {
   event: Event
@@ -37,6 +46,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   const [chats, setChats] = useState<Chat[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
+  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([])
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null)
   const soundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const chatIdsRef = useRef<Set<string>>(new Set())
@@ -49,16 +59,14 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     notificationPermissionRef.current = notificationPermission
   }, [notificationPermission])
 
-  // Notification functions - declared BEFORE they're used
+  // Notification functions
   const playNotificationSound = useCallback(() => {
     if (soundTimeoutRef.current) clearTimeout(soundTimeoutRef.current)
 
     soundTimeoutRef.current = setTimeout(() => {
-      // Try to play the notification sound first
       const audio = new Audio('/Notification.mp3')
       audio.volume = 1.0
       audio.play().catch(() => {
-        // Fallback: play a beep sound using Web Audio API
         try {
           const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
           const oscillator = audioContext.createOscillator()
@@ -85,7 +93,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     }
   }, [notificationPermission])
 
-  // Update refs when functions change
+  // Update refs
   useEffect(() => {
     showBrowserNotificationRef.current = showBrowserNotification
   }, [showBrowserNotification])
@@ -115,64 +123,75 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     notificationAudioRef.current = audio
   }, [])
 
-  // Global visibility change listener
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && notificationPermission === 'granted') {
-        // Optional: update badge or something
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [notificationPermission])
-
-  // Global message subscription for notifications (all event messages)
+  // Subscribe to broadcast messages
   useEffect(() => {
     const supabase = createClient()
     
-    const channel = supabase
-      .channel(`event-${event.id}-messages-notif`)
+    // Subscribe to broadcast_messages table
+    const broadcastChannel = supabase
+      .channel(`broadcast-${event.id}`)
       .on(
         'postgres_changes',
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'messages'
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'broadcast_messages',
+          filter: `event_id=eq.${event.id}`
         },
-        (payload) => {
-          const newMsg = payload.new as Message
-          // Check if message is from a chat in this event and not from current user
-          if (chatIdsRef.current.has(newMsg.chat_id) && newMsg.sender_id !== currentUser.id) {
-            if (document.hidden && notificationPermissionRef.current === 'granted') {
-              showBrowserNotificationRef.current?.(
-                'New Message',
-                newMsg.content?.slice(0, 50) + '...' || 'New message'
-              )
-            }
-            playNotificationSoundRef.current?.()
-            setUnreadCount(prev => prev + 1)
+        async (payload) => {
+          const newMessage = payload.new as any
+          
+          // Fetch sender name
+          const { data: sender } = await supabase
+            .from('event_users')
+            .select('username')
+            .eq('id', newMessage.sender_id)
+            .single()
+          
+          const broadcastMsg: BroadcastMessage = {
+            id: newMessage.id,
+            content: newMessage.content,
+            sender_name: sender?.username || 'Host',
+            created_at: newMessage.created_at
+          }
+          
+          // Add to messages list
+          setBroadcastMessages(prev => [broadcastMsg, ...prev])
+          
+          // Play notification sound
+          playNotificationSoundRef.current?.()
+          
+          // Show browser notification if page is hidden
+          if (document.hidden && notificationPermissionRef.current === 'granted') {
+            showBrowserNotificationRef.current?.(
+              `Broadcast from ${broadcastMsg.sender_name}`,
+              broadcastMsg.content
+            )
           }
         }
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(broadcastChannel)
     }
-  }, [event.id, currentUser.id])
+  }, [event.id])
+
+  // Remove a broadcast message
+  const removeBroadcastMessage = (messageId: string) => {
+    setBroadcastMessages(prev => prev.filter(msg => msg.id !== messageId))
+  }
 
   // Load users
   const loadUsers = useCallback(async () => {
     const supabase = createClient()
     
-    // Build query dynamically
     let query = supabase
       .from('event_users')
       .select('*', { count: 'exact' })
       .eq('event_id', event.id)
       .neq('id', currentUser.id)
     
-    // For multi-location events, only show users at the same location
     if (event.locations && event.locations.length > 1 && currentUser.location) {
       query = query.eq('location', currentUser.location)
     }
@@ -180,7 +199,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     const { data, count } = await query.order('created_at', { ascending: false })
 
     setUsers(data || [])
-    setUserCount((count || 0) + 1) // Include self
+    setUserCount((count || 0) + 1)
   }, [event.id, currentUser.id, event.locations, currentUser.location])
 
   // Load chats
@@ -235,7 +254,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
     }
   }, [currentUser.id, loadChats])
 
-  // Countdown timer - FIXED: Immediate countdown for live events
+  // Countdown timer
   useEffect(() => {
     function updateTimer() {
       const now = Date.now();
@@ -279,11 +298,8 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   }
 
   async function handleStartChat(targetUser: EventUser) {
-    // No chat limit - unlimited per location
-
     const supabase = createClient()
 
-    // Check if chat already exists
     const { data: existingChat } = await supabase
       .from('chats')
       .select('*')
@@ -296,7 +312,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       return
     }
 
-    // Create new chat
     const { data: newChat, error } = await supabase
       .from('chats')
       .insert({
@@ -321,12 +336,46 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
 
   return (
     <main className="min-h-dvh flex flex-col bg-background">
+      {/* Broadcast Messages Popup Stack */}
+      {broadcastMessages.length > 0 && (
+        <div className="fixed top-20 right-4 left-4 md:right-auto md:left-auto md:max-w-sm z-50 space-y-2">
+          {broadcastMessages.map((msg) => (
+            <div 
+              key={msg.id}
+              className="bg-black/95 backdrop-blur-lg border border-purple-500/50 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-top fade-in duration-300"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-purple-400 font-bold text-sm">{msg.sender_name}</p>
+                    <p className="text-white/40 text-xs">
+                      {new Date(msg.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <p className="text-white text-sm mt-1">{msg.content}</p>
+                </div>
+                <button
+                  onClick={() => removeBroadcastMessage(msg.id)}
+                  className="text-white/50 hover:text-white/80 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex items-center justify-between p-4">
           <div className="flex-1">
             <h1 className="font-bold text-foreground truncate">{event.show_name}</h1>
-            {/* Timer with circular border - moved to top */}
             <div className="flex items-center justify-center mt-2">
               <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5">
                 <Clock className="h-4 w-4 text-primary" />
@@ -362,7 +411,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               )}
             </div>
           </div>
-          {/* Location badge - moved here */}
           {event.locations && event.locations.length > 1 && currentUser.location && (
             <div className="flex items-center gap-1 text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">
               <MapPin className="h-3 w-3" />
@@ -384,7 +432,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       ) : (
         <div className="flex-1 flex flex-col">
           {users.length === 0 ? (
-            // Empty state - removed text
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-20 h-20 rounded-full bg-primary/10 p-3 flex items-center justify-center mb-4 overflow-hidden">
                 <Image 
@@ -395,12 +442,9 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                   className="object-contain"
                 />
               </div>
-              {/* Text removed, logo only */}
             </div>
           ) : (
-            // User cards
             <div className="flex-1 relative">
-              {/* Current user card */}
               {currentViewUser && (
                 <UserCard 
                   user={currentViewUser} 
@@ -414,16 +458,14 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         </div>
       )}
 
-      {/* Bottom Bar - User count, Message icon, Logout */}
-      <div className="sticky bottom-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/50">
+      {/* Bottom Bar */}
+      <div className="sticky bottom-0 z-40 bg-background/80 backdrop-blur-lg border-t border-border/50">
         <div className="flex items-center justify-between px-6 py-3">
-          {/* User count */}
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">{userCount} here</span>
           </div>
           
-          {/* Message icon */}
           <Button 
             variant={showChats ? "secondary" : "ghost"}
             size="icon"
@@ -439,7 +481,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
             )}
           </Button>
           
-          {/* Logout button */}
           <Button variant="ghost" size="icon" onClick={handleLeave}>
             <LogOut className="h-5 w-5" />
           </Button>

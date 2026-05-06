@@ -12,11 +12,14 @@ export async function uploadSelfie(
   const filePath = `selfies/${eventId}/${filename}`
   
   const { data, error } = await supabase.storage
-    .from('event-selfies')
+    .from('selfies')
     .upload(filePath, blob, {
       contentType: 'image/jpeg',
       upsert: true,
+      cacheControl: '3600',
     })
+
+
   
   if (error) {
     console.error('Upload error:', error)
@@ -24,8 +27,9 @@ export async function uploadSelfie(
   }
   
   const { data: urlData } = supabase.storage
-    .from('event-selfies')
+    .from('selfies')
     .getPublicUrl(filePath)
+
   
   return urlData.publicUrl
 }
