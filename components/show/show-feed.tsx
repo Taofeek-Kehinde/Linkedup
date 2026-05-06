@@ -326,41 +326,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         <div className="flex items-center justify-between p-4">
           <div className="flex-1">
             <h1 className="font-bold text-foreground truncate">{event.show_name}</h1>
-            <div className="flex items-center justify-center gap-6 text-center mx-auto">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Users className="h-3 w-3" />
-                <span>{userCount} here</span>
-              </div>
-              {event.locations && event.locations.length > 1 && currentUser.location && (
-                <div className="flex items-center gap-1 text-xs text-primary font-medium">
-                  <MapPin className="h-3 w-3" />
-                  <span>{currentUser.location}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 text-sm font-mono font-bold text-primary">
-                <Clock className="h-4 w-4" />
-                <span>{timeRemaining}</span>
+            {/* Timer with circular border - moved to top */}
+            <div className="flex items-center justify-center mt-2">
+              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="text-sm font-mono font-bold text-primary">{timeRemaining}</span>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant={showChats ? "secondary" : "ghost"}
-              size="icon"
-              className="relative"
-              onClick={() => {
-                setShowChats(!showChats)
-                if (unreadCount > 0) setUnreadCount(0)
-              }}
-            >
-              <MessageCircle className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
-              )}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLeave}>
-              <LogOut className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
@@ -390,7 +362,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               )}
             </div>
           </div>
-          {/* Removed chat limit badge - unlimited chats per location */}
+          {/* Location badge - moved here */}
+          {event.locations && event.locations.length > 1 && currentUser.location && (
+            <div className="flex items-center gap-1 text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">
+              <MapPin className="h-3 w-3" />
+              <span>{currentUser.location}</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -422,9 +400,6 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
           ) : (
             // User cards
             <div className="flex-1 relative">
-              {/* Navigation buttons */}
-
-
               {/* Current user card */}
               {currentViewUser && (
                 <UserCard 
@@ -434,12 +409,42 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                   canChat={true}
                 />
               )}
-
-
             </div>
           )}
         </div>
       )}
+
+      {/* Bottom Bar - User count, Message icon, Logout */}
+      <div className="sticky bottom-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/50">
+        <div className="flex items-center justify-between px-6 py-3">
+          {/* User count */}
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">{userCount} here</span>
+          </div>
+          
+          {/* Message icon */}
+          <Button 
+            variant={showChats ? "secondary" : "ghost"}
+            size="icon"
+            className="relative"
+            onClick={() => {
+              setShowChats(!showChats)
+              if (unreadCount > 0) setUnreadCount(0)
+            }}
+          >
+            <MessageCircle className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
+            )}
+          </Button>
+          
+          {/* Logout button */}
+          <Button variant="ghost" size="icon" onClick={handleLeave}>
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
     </main>
   )
 }
