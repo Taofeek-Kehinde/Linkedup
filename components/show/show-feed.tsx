@@ -16,8 +16,10 @@ import {
   ChevronRight,
   MapPin,
   Crown,
-  X
+  X,
+  Eye 
 } from 'lucide-react'
+
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
 import type { Event, EventUser, UserSession, Chat, Message } from '@/lib/types'
@@ -41,9 +43,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   const [users, setUsers] = useState<EventUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userCount, setUserCount] = useState(0)
+  const [showLocations, setShowLocations] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
+
   const [timeRemaining, setTimeRemaining] = useState<string>('')
   const [showChats, setShowChats] = useState(false)
   const [chats, setChats] = useState<Chat[]>([])
+
   const [unreadCount, setUnreadCount] = useState(0)
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
   const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([])
@@ -192,10 +198,9 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       .eq('event_id', event.id)
       .neq('id', currentUser.id)
     
-    if (event.locations && event.locations.length > 1 && currentUser.location) {
-      query = query.eq('location', currentUser.location)
-    }
-    
+    // For the "Peep" multi-location UI, we must load ALL users for the event,
+    // then filter by location in the locations panel.
+
     const { data, count } = await query.order('created_at', { ascending: false })
 
     setUsers(data || [])
@@ -383,7 +388,19 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
               </div>
             </div>
           </div>
+
+          {event.locations && event.locations.length > 1 && (
+            <Button
+              variant="secondary"
+              className="ml-3 rounded-full"
+              onClick={() => setShowLocations(true)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Peep
+            </Button>
+          )}
         </div>
+
 
         {/* User info bar */}
         <div className="flex items-center justify-between px-4 pb-3">
@@ -421,7 +438,64 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
       </header>
 
       {/* Main content */}
-      {showChats ? (
+      {showLocations ? (
+        <div className="flex-1 flex flex-col">
+          <div className="p-4 border-b border-border/50 bg-background/80 backdrop-blur sticky top-0 z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <h2 className="font-bold">Locations</h2>
+            </div>
+            <Button variant="ghost" onClick={() => { setShowLocations(false); setSelectedLocation(null) }}>
+              Close
+            </Button>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {(event.locations || []).map((loc) => {
+              const active = selectedLocation === loc
+              return (
+                <Button
+                  key={loc}
+                  variant={active ? 'secondary' : 'ghost'}
+                  className="w-full justify-start"
+                  onClick={() => setSelectedLocation(loc)}
+                >
+                  {loc}
+                </Button>
+              )
+            })}
+
+            {selectedLocation && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-muted-foreground">Users at {selectedLocation}</p>
+                <div className="space-y-2">
+                  {users
+                    .filter((u) => (u as any).location === selectedLocation)
+                    .map((u) => (
+
+                      <div key={u.id} className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3">
+                        <div className="flex items-center gap-3">
+                          {u.selfie_url ? (
+                            <img src={u.selfie_url} alt={u.username} className="w-10 h-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">{u.username.charAt(0).toUpperCase()}</div>
+                          )}
+                          <div>
+                            <div className="font-semibold">{u.username}</div>
+                            <div className="text-xs text-muted-foreground">{u.vibe_key}</div>
+                          </div>
+                        </div>
+                        <Button variant="secondary" onClick={() => handleStartChat(u)}>
+                          Peep
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : showChats ? (
         <ChatList 
           chats={chats} 
           currentUser={currentUser}
@@ -431,6 +505,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         />
       ) : (
         <div className="flex-1 flex flex-col">
+
           {users.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-20 h-20 rounded-full bg-primary/10 p-3 flex items-center justify-center mb-4 overflow-hidden">
