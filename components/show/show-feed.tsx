@@ -247,33 +247,31 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             </div>
           </div>
 
-          {event.locations && event.locations.length > 1 && (
-            <Button variant="secondary" className="ml-3 rounded-full" onClick={() => setShowLocations(true)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Peep
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
+            <Button
+              variant="outline"
+              className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+              onClick={() => hostUser && handleStartChat(hostUser)}
+              disabled={!hostUser}
+            >
+              <UserIcon className="h-4 w-4 mr-2" />
+              {hostUser ? `Host: ${hostUser.username}` : 'Host'}
             </Button>
-          )}
 
-          <Button
-            variant="outline"
-            className="ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-            onClick={() => hostUser && handleStartChat(hostUser)}
-            disabled={!hostUser}
-          >
-            <UserIcon className="h-4 w-4 mr-2" />
-            {hostUser ? `Host: ${hostUser.username}` : 'Host'}
-          </Button>
+            {event.locations && event.locations.length > 1 && (
+              <Button
+                variant="secondary"
+                className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full"
+                onClick={() => setShowLocations(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Peep
+              </Button>
+            )}
+          </div>
 
-
-          <Button
-            variant="outline"
-            className={`ml-2 rounded-full border-amber-500/30 text-amber-300 bg-amber-500/5 hover:bg-amber-500/10 ${showVip ? 'ring-2 ring-amber-400' : ''}`}
-            onClick={() => setShowVip((v) => !v)}
-          >
-            <Crown className="h-4 w-4 mr-2 text-amber-400" />
-            VIP
-          </Button>
         </div>
+
 
         <div className="flex items-center justify-between px-4 pb-3">
           <div className="flex items-center gap-2">

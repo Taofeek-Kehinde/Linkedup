@@ -166,9 +166,41 @@ export default function ChatPage() {
     }
   }, [])
 
+
+  // Live camera preview (video recording)
+  const [isCameraReady, setIsCameraReady] = useState(false)
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    if (!isRecording || recordingType !== 'video') {
+      setIsCameraReady(false)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const stream = streamRef.current
+      const el = previewVideoRef.current
+      if (stream && el) {
+        try {
+          el.srcObject = stream
+          el.muted = true
+          el.playsInline = true
+          el.play().catch(() => {})
+          setIsCameraReady(true)
+          clearInterval(interval)
+        } catch {
+          // keep trying
+        }
+      }
+    }, 200)
+
+    return () => clearInterval(interval)
+  }, [isRecording, recordingType])
+
   // Live event timer
   useEffect(() => {
     let interval: NodeJS.Timeout
+
 
     const updateTimer = () => {
       if (!event) {
@@ -331,38 +363,48 @@ export default function ChatPage() {
       }
 
 mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'video/webm' })
-
-        const formData = new FormData()
-        formData.append('file', blob, 'video.webm')
-        formData.append('eventId', eventId)
-        formData.append('chatId', chatId)
-
         try {
+          // Ensure all final chunks are collected before creating the blob
+          if (chunks.length === 0) {
+            console.warn('Video onstop: no chunks captured')
+            return
+          }
+
+          const blob = new Blob(chunks, { type: 'video/webm' })
+          const formData = new FormData()
+          formData.append('file', blob, 'video.webm')
+          formData.append('eventId', eventId)
+          formData.append('chatId', chatId)
+
           const uploadRes = await fetch('/api/upload-message-media', {
             method: 'POST',
             body: formData,
           })
 
-          if (uploadRes.ok) {
-            const data = await uploadRes.json()
-            if (data.url) {
-              await sendMessage(data.url, data.type || 'video')
-            }
-          } else {
+          if (!uploadRes.ok) {
             console.error('Upload failed:', await uploadRes.text())
+            return
+          }
+
+          const data = await uploadRes.json()
+          if (data?.url) {
+            await sendMessage(data.url, data.type || 'video')
+          } else {
+            console.error('Upload response missing url:', data)
           }
         } catch (err) {
-          console.error('Upload error:', err)
-        }
-
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop())
+          console.error('Video onstop error:', err)
+        } finally {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop())
+          }
         }
       }
 
-mediaRecorder.start(250) // shorter chunks for immediate send
+      // Start recording (keep it consistent with auto-stop timing)
+      mediaRecorder.start(1000)
       setIsRecording(true)
+
       setRecordingType('video')
       setRecordingTime(0)
 
@@ -442,7 +484,8 @@ mediaRecorder.start(250) // shorter chunks for immediate send
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current && isRecording && mediaRecorderRef.current.state === 'recording') {
+    // Stop the recorder even if React state hasn't updated yet.
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
     }
     if (recordingTimerRef.current) {
@@ -498,31 +541,28 @@ mediaRecorder.start(250) // shorter chunks for immediate send
 
   return (
     <main className="min-h-dvh flex flex-col bg-background">
-      {/* Recording Overlay */}
-{isRecording && (
+      {/* Recording Overlay (video preview) */}
+{isRecording && recordingType === 'video' && (
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-red-500 animate-pulse flex items-center justify-center">
-                {recordingType === 'video' ? (
-                  <Video className="w-12 h-12 text-white" />
-                ) : (
-                  <Mic className="w-12 h-12 text-white" />
-                )}
-              </div>
-              <div className="absolute -top-2 -right-2 bg-white text-black rounded-full px-2 py-1 text-sm font-bold">
-                {recordingTime}s
-              </div>
+          <div className="relative w-[320px] max-w-[90vw]">
+            <video
+              ref={previewVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-auto rounded-2xl border border-white/10"
+            />
+            <div className="absolute -top-2 -right-2 bg-white text-black rounded-full px-2 py-1 text-sm font-bold">
+              {recordingTime}s
             </div>
-            <p className="text-white text-lg font-semibold">
-              Recording {recordingType === 'video' ? 'video' : 'voice note'}...
-            </p>
-            <p className="text-white text-sm">
-              Auto-send in {15 - recordingTime}s
-            </p>
+          </div>
+          <div className="text-center mt-4 space-y-2">
+            <p className="text-white text-lg font-semibold">Recording video...</p>
+            <p className="text-white text-sm">Auto-send in {15 - recordingTime}s</p>
           </div>
         </div>
       )}
+
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
@@ -659,63 +699,7 @@ mediaRecorder.start(250) // shorter chunks for immediate send
             <Video className="h-5 w-5" />
           </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 shrink-0"
-            onClick={startAudioRecording}
-            title="Record voice note (15 seconds max)"
-          >
-            <Mic className="h-5 w-5" />
-          </Button>
-
-          <div className="relative">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 shrink-0"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              title="Add emoji"
-            >
-              <Sticker className="h-5 w-5" />
-            </Button>
-
-            {showEmojiPicker && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                <div className="relative bg-background rounded-lg p-2 shadow-xl max-w-xs w-full mx-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">
-                      {selectedEmojis.length > 0 ? `${selectedEmojis.length} selected` : 'Stickers'}
-                    </span>
-                    <button
-                      onClick={toggleMultiSelectMode}
-                      className={`text-xs px-2 py-1 rounded ${isMultiSelectMode ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
-                    >
-                      {isMultiSelectMode ? 'Multi' : 'Single'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedEmojis([])
-                        setShowEmojiPicker(false)
-                      }}
-                      className="p-1 rounded-full hover:bg-accent"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <EmojiPicker
-                    onEmojiClick={onEmojiClick}
-                    autoFocusSearch={false}
-                    skinTonesDisabled
-                    width={280}
-                    height={320}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Removed voice note (audio) + sticker picker buttons */}
 
           <form onSubmit={handleTextSubmit} className="flex-1 flex gap-2">
             <Input
@@ -729,13 +713,14 @@ mediaRecorder.start(250) // shorter chunks for immediate send
             <Button
               type="submit"
               size="icon"
-              disabled={(isMultiSelectMode && selectedEmojis.length === 0) || (!isMultiSelectMode && !newMessage.trim()) || isSending}
+              disabled={!newMessage.trim() || isSending}
             >
               {isSending ? <Spinner className="h-4 w-4" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
         </div>
       </div>
+
     </main>
   )
 }
