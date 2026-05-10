@@ -250,13 +250,13 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
             <Button
               variant="outline"
-              className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-              onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}
+className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+onClick={() => router.push(`/show/${event.id}/host-chat`)}
               disabled={event.status !== 'live'}
               title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
             >
               <UserIcon className="h-4 w-4 mr-2" />
-              Host
+              {hostUser ? `Host: ${hostUser.username}` : 'Host'}
             </Button>
 
             {event.locations && event.locations.length > 1 && (

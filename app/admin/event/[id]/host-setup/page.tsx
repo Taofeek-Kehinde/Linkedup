@@ -57,8 +57,6 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
         setHostUser(hostData)
       }
 
-      // VIP list: show only VIPs that belong to this event.
-      // (Avoid auth_user_id filtering here — it can trigger 406 responses in some Supabase setups.)
       const { data: vipData } = await supabase
         .from('event_users')
         .select('*')
@@ -66,8 +64,6 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
         .eq('is_vip', true)
 
       setVipUsers(vipData ?? [])
-
-
 
       setIsLoading(false)
     }
@@ -127,126 +123,10 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
     return () => clearInterval(interval)
   }, [event])
 
-  const handleHostClick = async () => {
-    // Open a chat screen where the admin host can chat with a VIP/attendee.
-    // show/chat pages depend on localStorage session; if not set they redirect to /join.
-
-    if (!event) return
-
-    try {
-      // Make sure we have the real host EventUser row
-      const resolvedHostUser = hostUser
-      if (!resolvedHostUser) return
-
-      // Pick a chat partner.
-      // Prefer VIPs (because HOST is meant to reach VIP/attendees via the same UX).
-      // Fallback to any attendee so the button still works even if no VIP exists.
-      const target = vipUsers[0] ?? null
-      if (!target) return
-
-
-
-      const supabase = createClient()
-
-      // Resolve chat id for (host <-> target)
-      // Resolve a target attendee in case vipUsers is empty.
-      let resolvedTarget: EventUser | null = vipUsers[0] ?? null
-      if (!resolvedTarget) {
-
-        const { data: attendeeData, error: attendeeErr } = await supabase
-          .from('event_users')
-          .select('id, auth_user_id, username, vibe_key, session_token, selfie_url, is_upgraded, is_vip')
-          .eq('event_id', event.id)
-          .neq('id', resolvedHostUser.id)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle()
-
-        if (attendeeErr) {
-          console.error('HOST click: failed to resolve attendee fallback', attendeeErr)
-          return
-        }
-        resolvedTarget = attendeeData ? ({
-          ...(attendeeData as any),
-          event_id: event.id,
-          location: null,
-          created_at: new Date().toISOString(),
-
-        }) as EventUser : null
-
-
-
-      }
-
-      if (!resolvedTarget) return
-
-      const { data: chatData, error: chatErr } = await supabase
-        .from('chats')
-        .select('id, user1_id, user2_id')
-        .eq('event_id', event.id)
-        .or(
-          `and(user1_id=eq.${resolvedHostUser.id},user2_id=eq.${resolvedTarget.id}),and(user1_id=eq.${resolvedTarget.id},user2_id=eq.${resolvedHostUser.id})`
-        )
-        .limit(1)
-        .maybeSingle()
-
-
-      if (chatErr) {
-        console.error('HOST click: failed to resolve chat', chatErr)
-        return
-      }
-
-      let resolvedChatId = chatData?.id
-
-      // If the chat row does not exist yet, create it.
-      if (!resolvedChatId) {
-        const { data: createdChat, error: createChatErr } = await supabase
-          .from('chats')
-          .insert({
-            event_id: event.id,
-            user1_id: resolvedHostUser.id,
-            user2_id: resolvedTarget.id,
-
-            is_active: true,
-          })
-          .select('id')
-          .single()
-
-        if (createChatErr) {
-          console.error('HOST click: failed to create chat row', createChatErr)
-          return
-        }
-
-        resolvedChatId = createdChat?.id
-      }
-
-      if (!resolvedChatId) {
-        console.error('HOST click: no resolved chat id')
-        return
-      }
-
-      // Set local session for host so chat page won't redirect to /join
-      const hostSession = {
-        eventUserId: resolvedHostUser.id,
-        eventId: event.id,
-        username: resolvedHostUser.username,
-        vibeKey: resolvedHostUser.vibe_key,
-        sessionToken: resolvedHostUser.session_token,
-        selfieUrl: resolvedHostUser.selfie_url,
-        isUpgraded: resolvedHostUser.is_upgraded,
-        isVip: resolvedHostUser.is_vip,
-      }
-
-      localStorage.setItem('linkedup_session', JSON.stringify(hostSession))
-
-      router.push(`/show/${event.id}/chat/${resolvedChatId}`)
-
-    } catch (e) {
-      console.error('HOST click error:', e)
-    }
+  const handleHostClick = () => {
+    // Simply redirect to the host chat page where attendees can chat with host
+    router.push(`/show/${eventId}/host-chat`)
   }
-
-
 
   const handleVipClick = () => {
     setIsVipMode(!isVipMode)
@@ -263,7 +143,6 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      // Get or create host event user
       let { data: hostEventUser } = await supabase
         .from('event_users')
         .select('*')
@@ -288,7 +167,6 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
 
       if (!hostEventUser) throw new Error('Could not create host user')
 
-      // Insert broadcast message into the new table
       const { error: insertError } = await supabase
         .from('broadcast_messages')
         .insert({
@@ -302,7 +180,6 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
         throw insertError
       }
 
-      // Clear input
       setUserMessage('')
 
     } catch (error) {

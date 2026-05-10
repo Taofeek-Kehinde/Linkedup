@@ -15,6 +15,7 @@ interface ChatListProps {
   eventId: string
   event: Event
   onClose: () => void
+  onChatSelect?: (chatId: string) => void
 }
 
 interface ChatWithPartner extends Chat {
@@ -22,7 +23,7 @@ interface ChatWithPartner extends Chat {
   lastMessage?: string
 }
 
-export function ChatList({ chats, currentUser, eventId, event, onClose }: ChatListProps) {
+export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSelect }: ChatListProps) {
   const [timeRemaining, setTimeRemaining] = useState('')
 
   useEffect(() => {
@@ -96,7 +97,11 @@ export function ChatList({ chats, currentUser, eventId, event, onClose }: ChatLi
   }, [chats, currentUser.id])
 
   function openChat(chatId: string) {
-    router.push(`/show/${eventId}/chat/${chatId}`)
+    if (onChatSelect) {
+      onChatSelect(chatId)
+    } else {
+      router.push(`/show/${eventId}/chat/${chatId}`)
+    }
   }
 
   return (

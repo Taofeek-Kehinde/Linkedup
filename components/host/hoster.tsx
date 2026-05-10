@@ -93,9 +93,7 @@ export default function Hoster({ eventId, hostSelfieUrl, hostLocation }: HosterP
   }, [event])
 
   const handleHostClick = () => {
-    // Handle host functionality - could open host controls or settings
-    console.log('Host button clicked')
-    // You can add navigation or modal opening here
+    router.push(`/show/${eventId}/host-chat`)
   }
 
   const handleVipClick = () => {
