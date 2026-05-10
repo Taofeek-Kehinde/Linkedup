@@ -111,10 +111,12 @@ export default function ChatPage() {
         .single()
 
       if (!eventData || eventData.status === 'ended') {
+        // Event already ended => block chat and logout user
         clearLocalSession()
         router.push('/')
         return
       }
+
 
       setEvent(eventData)
       setIsLoading(false)
@@ -202,7 +204,8 @@ export default function ChatPage() {
     let interval: NodeJS.Timeout
 
 
-    const updateTimer = () => {
+      const updateTimer = (): void => {
+
       if (!event) {
         setTimeRemaining('')
         return
@@ -220,9 +223,13 @@ export default function ChatPage() {
 
       const remaining = endTime - now
       if (remaining <= 0) {
+        // Event ended while user is still on the chat => show message and logout
         setTimeRemaining('Event ended')
+        clearLocalSession()
+        router.push('/')
         return
       }
+
 
       const hours = Math.floor(remaining / (1000 * 60 * 60))
       const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))

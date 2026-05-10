@@ -251,11 +251,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             <Button
               variant="outline"
               className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-              onClick={() => hostUser && handleStartChat(hostUser)}
-              disabled={!hostUser}
+              onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}
+              disabled={event.status !== 'live'}
+              title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
             >
               <UserIcon className="h-4 w-4 mr-2" />
-              {hostUser ? `Host: ${hostUser.username}` : 'Host'}
+              Host
             </Button>
 
             {event.locations && event.locations.length > 1 && (
