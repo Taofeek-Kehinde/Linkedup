@@ -1,10 +1,13 @@
-# Auto-recording Changes TODO
+# TODO
 
-## Steps:
-1. [x] Add 15s auto-stop to video recording timer in startVideoRecording()
-2. [x] Remove Cancel and Send buttons from recording overlay
-3. [x] Update video record button title to reflect 15s max
-4. [x] Test recording: both audio/video auto-send at 15s without buttons
-
-Progress will be updated after each step.
+## Fix selfie fallback gradients (per-user)
+- [ ] Update `components/show/user-card.tsx` to render the gradient fallback when `selfie_url` fails to load (use `onError`).
+- [ ] Update `components/show/show-feed.tsx` to render the correct gradient fallback for:
+  - current user header avatar
+  - location list avatars
+  - user card avatar images (if applicable)
+  when `selfie_url` fails (use `onError`).
+- [ ] Verify locally by opening:
+  - `/show/[eventId]` with multiple locations
+  - confirm both fallbacks appear when image URLs are invalid/unreachable.
 

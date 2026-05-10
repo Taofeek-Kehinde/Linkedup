@@ -40,6 +40,15 @@ interface ShowFeedProps {
 
 export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
   const router = useRouter()
+  const [failedSelfieUrls, setFailedSelfieUrls] = useState<Set<string>>(new Set())
+
+  const markSelfieFailed = useCallback((url: string) => {
+    setFailedSelfieUrls(prev => {
+      const next = new Set(prev)
+      next.add(url)
+      return next
+    })
+  }, [])
   const [users, setUsers] = useState<EventUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userCount, setUserCount] = useState(0)
@@ -405,11 +414,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
         {/* User info bar */}
         <div className="flex items-center justify-between px-4 pb-3">
           <div className="flex items-center gap-2">
-            {currentUser.selfie_url ? (
-              <img 
-                src={currentUser.selfie_url} 
+            {((currentUser.selfie_url || '').trim().length > 0) && !failedSelfieUrls.has((currentUser.selfie_url || '').trim()) ? (
+              <img
+                src={(currentUser.selfie_url || '').trim()}
                 alt={currentUser.username}
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
+                onError={() => markSelfieFailed((currentUser.selfie_url || '').trim())}
+                loading="lazy"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden">
@@ -418,7 +429,7 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
               <div>
                 <p className="text-sm font-medium text-foreground">{currentUser.username}</p>
                 <p className="text-xs font-mono text-muted-foreground">{currentUser.vibe_key}</p>
@@ -475,8 +486,13 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
 
                       <div key={u.id} className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3">
                         <div className="flex items-center gap-3">
-                          {u.selfie_url ? (
-                            <img src={u.selfie_url} alt={u.username} className="w-10 h-10 rounded-full object-cover" />
+                          {(u.selfie_url || '').trim().length > 0 && !failedSelfieUrls.has((u.selfie_url || '').trim()) ? (
+                            <img
+                              src={(u.selfie_url || '').trim()}
+                              alt={u.username}
+                              className="w-10 h-10 rounded-full object-cover"
+                              onError={() => markSelfieFailed((u.selfie_url || '').trim())}
+                            />
                           ) : (
                             <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">{u.username.charAt(0).toUpperCase()}</div>
                           )}
@@ -509,20 +525,21 @@ export function ShowFeed({ event, currentUser, session }: ShowFeedProps) {
           {users.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-20 h-20 rounded-full bg-primary/10 p-3 flex items-center justify-center mb-4 overflow-hidden">
-                <Image 
-                  src="/logo.png" 
-                  alt="LinkedUp" 
+                <Image
+                  src="/logo.png"
+                  alt="LinkedUp"
                   width={64}
                   height={64}
                   className="object-contain"
+                  priority
                 />
               </div>
             </div>
           ) : (
             <div className="flex-1 relative">
               {currentViewUser && (
-                <UserCard 
-                  user={currentViewUser} 
+                <UserCard
+                  user={currentViewUser}
                   onChat={() => handleStartChat(currentViewUser)}
                   onPass={handleNext}
                   canChat={true}

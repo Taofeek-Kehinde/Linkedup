@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { Plus, Calendar, Users, LogOut, QrCode, MapPin, Clock } from 'lucide-react'
+import { Plus, Calendar, Users, LogOut, QrCode, MapPin, Clock, Trash2 } from 'lucide-react'
 import type { Event } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 import Link from 'next/link'
@@ -103,6 +103,14 @@ export default function AdminDashboard() {
   const liveEvents = events.filter(e => e.status === 'live')
   const upcomingEvents = events.filter(e => e.status === 'upcoming')
   const archivedEvents = events.filter(e => e.status === 'archived' || e.status === 'ended')
+
+  const canDeleteEnded = (event: Event) => {
+    if (event.status !== 'ended') return false
+    const endedAtIso = (event as any).ends_at || (event as any).ended_at
+    if (!endedAtIso) return true
+    const endedAt = new Date(endedAtIso).getTime()
+    return Date.now() - endedAt >= 6 * 60 * 60 * 1000
+  }
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -211,7 +219,15 @@ export default function AdminDashboard() {
   )
 }
 
-function EventCard({ event }: { event: Event }) {
+async function deleteEvent(eventId: string) {
+  const supabase = createClient()
+  await supabase
+    .from('events')
+    .delete()
+    .eq('id', eventId)
+}
+
+function EventCard({ event, canDelete }: { event: Event; canDelete?: boolean }) {
   const statusColors = {
     live: 'bg-green-500/20 text-green-400',
     upcoming: 'bg-yellow-500/20 text-yellow-400',
