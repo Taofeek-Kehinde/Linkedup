@@ -73,25 +73,31 @@ useEffect(() => {
       // Last resort: try Supabase auth user (for authenticated hosts)
       if (!currentUserData) {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          router.push('/join')
-          return
+        if (user) {
+          // NOTE: this call can fail with 406 if RLS/policies reject the request.
+          // In that case we should not redirect/logout; we just stop initialization.
+          try {
+            const { data: authUser } = await supabase
+              .from('event_users')
+              .select('*')
+              .eq('event_id', eventId)
+              .eq('auth_user_id', user.id)
+              .single()
+            currentUserData = authUser
+          } catch {
+            currentUserData = null
+          }
         }
-
-        const { data: authUser } = await supabase
-          .from('event_users')
-          .select('*')
-          .eq('event_id', eventId)
-          .eq('auth_user_id', user.id)
-          .single()
-        currentUserData = authUser
       }
 
       if (!currentUserData) {
-        router.push('/join')
+        // Keep user on host chat page; the app will render loader.
+        // Redirecting to /join is what *looks like a logout*.
+        setIsLoading(true)
         return
       }
       setCurrentUser(currentUserData)
+
 
       const { data: eventData } = await supabase
         .from('events')
