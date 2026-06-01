@@ -164,6 +164,10 @@ useEffect(() => {
     loadData()
   }, [eventId, router])
 
+  // If Supabase RLS/policy rejects the event_users query, the page can get stuck.
+  // We keep the spinner state rather than forcing a /join redirect.
+
+
   // Subscribe to new messages for selected chat
   useEffect(() => {
     if (!chatId) return
