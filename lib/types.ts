@@ -24,6 +24,7 @@ export interface EventUser {
   session_token: string
   is_upgraded: boolean
   is_vip: boolean
+  is_active: boolean
   auth_user_id: string | null
   location: string | null
   created_at: string
@@ -73,6 +74,7 @@ export interface UserSession {
   selfieUrl: string | null
   isUpgraded: boolean
   isVip: boolean
+  isActive: boolean
 }
 
 // Form types

@@ -221,6 +221,7 @@ export function JoinFlow() {
       selfieUrl: existingUser.selfie_url,
       isUpgraded: existingUser.is_upgraded,
       isVip: existingUser.is_vip,
+      isActive: existingUser.is_active ?? true,
     }
     setLocalSession(session)
     
@@ -283,13 +284,15 @@ export function JoinFlow() {
           selfie_url: selfieUrl,
           session_token: sessionToken,
           is_upgraded: false,
+          is_active: true,
           location: selectedLocation || null,
         })
         .select()
         .single()
 
       if (error) {
-        setError(error.message)
+        console.error('Insert event_user error:', error)
+        setError(`Failed to join event: ${error.message || 'Unknown error'}`)
         setIsLoading(false)
         return
       }
@@ -304,12 +307,14 @@ export function JoinFlow() {
         selfieUrl: newUser.selfie_url,
         isUpgraded: false,
         isVip: false,
+        isActive: newUser.is_active ?? true,
       }
       setLocalSession(session)
 
       // Navigate to show
       router.push(`/show/${event.id}`)
-    } catch {
+    } catch (e) {
+      console.error('handleSelfieComplete error:', e)
       setError('Something went wrong. Please try again.')
       setIsLoading(false)
     }

@@ -91,7 +91,7 @@ export default function UpgradePage({ params }: { params: Promise<{ eventId: str
     // Update local session
     const session = getLocalSession()
     if (session) {
-      setLocalSession({ ...session, isUpgraded: true, isVip: session.isVip })
+      setLocalSession({ ...session, isUpgraded: true, isVip: session.isVip, isActive: session.isActive ?? true })
     }
 
     router.push(`/show/${eventId}`)
@@ -123,7 +123,7 @@ export default function UpgradePage({ params }: { params: Promise<{ eventId: str
     }
 
     // Update local session
-    setLocalSession({ ...session, isUpgraded: true, isVip: session.isVip })
+    setLocalSession({ ...session, isUpgraded: true, isVip: session.isVip, isActive: session.isActive ?? true })
     router.push(`/show/${eventId}`)
   }
 

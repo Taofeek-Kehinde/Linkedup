@@ -6,7 +6,7 @@ export async function POST() {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
   if (!supabaseServiceKey) {
-    return NextResponse.json({ error: 'Service role key not configured' }, { status: 500 })
+    return NextResponse.json({ started: 0, ended: 0, notice: 'Service role key not configured - auto-start disabled' })
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
