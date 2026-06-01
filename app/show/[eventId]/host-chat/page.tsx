@@ -96,8 +96,7 @@ useEffect(() => {
         setIsLoading(true)
         return
       }
-      setCurrentUser(currentUserData)
-
+setCurrentUser(currentUserData)
 
       const { data: eventData } = await supabase
         .from('events')
@@ -124,7 +123,7 @@ useEffect(() => {
           .select('*')
           .eq('event_id', eventId)
           .eq('username', 'HOST')
-          .maybeSingle()
+          .single()
 
         hostData = hostUsernameData
       }
