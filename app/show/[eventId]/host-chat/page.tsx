@@ -32,7 +32,7 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
-  useEffect(() => {
+useEffect(() => {
     async function loadData() {
       const supabase = createClient()
 
@@ -42,6 +42,7 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
       if (sessionStr) {
         try {
           const session = JSON.parse(sessionStr)
+          // First try to find user by id from session
           const { data } = await supabase
             .from('event_users')
             .select('*')
@@ -53,7 +54,23 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
         }
       }
 
-      // If localStorage isn't available/valid, fall back to the Supabase session.
+      // If user not found by id, try sessionToken (for session consistency)
+      if (!currentUserData && sessionStr) {
+        try {
+          const session = JSON.parse(sessionStr)
+          const { data: tokenUser } = await supabase
+            .from('event_users')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('session_token', session.sessionToken)
+            .single()
+          currentUserData = tokenUser
+        } catch {
+          currentUserData = null
+        }
+      }
+
+      // Last resort: try Supabase auth user (for authenticated hosts)
       if (!currentUserData) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
@@ -61,15 +78,14 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
           return
         }
 
-        const { data: hostEventUser } = await supabase
+        const { data: authUser } = await supabase
           .from('event_users')
           .select('*')
           .eq('event_id', eventId)
           .eq('auth_user_id', user.id)
           .single()
-        currentUserData = hostEventUser
+        currentUserData = authUser
       }
-
 
       if (!currentUserData) {
         router.push('/join')
