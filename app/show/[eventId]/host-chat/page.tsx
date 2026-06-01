@@ -40,19 +40,27 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
       let currentUserData: EventUser | null = null
 
       if (sessionStr) {
-        const session = JSON.parse(sessionStr)
-        const { data } = await supabase
-          .from('event_users')
-          .select('*')
-          .eq('id', session.eventUserId)
-          .single()
-        currentUserData = data
-      } else {
+        try {
+          const session = JSON.parse(sessionStr)
+          const { data } = await supabase
+            .from('event_users')
+            .select('*')
+            .eq('id', session.eventUserId)
+            .single()
+          currentUserData = data
+        } catch {
+          currentUserData = null
+        }
+      }
+
+      // If localStorage isn't available/valid, fall back to the Supabase session.
+      if (!currentUserData) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           router.push('/join')
           return
         }
+
         const { data: hostEventUser } = await supabase
           .from('event_users')
           .select('*')
@@ -61,6 +69,7 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
           .single()
         currentUserData = hostEventUser
       }
+
 
       if (!currentUserData) {
         router.push('/join')
