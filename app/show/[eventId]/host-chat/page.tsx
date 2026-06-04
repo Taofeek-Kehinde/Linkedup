@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Send, Crown, User, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Send, Crown, User, MessageCircle, LogOut } from 'lucide-react'
 import Image from 'next/image'
 import type { Event, EventUser, Message, Chat } from '@/lib/types'
 import { ChatList } from '@/components/chat/chat-list'
@@ -261,7 +261,8 @@ setCurrentUser(currentUserData)
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          <div className="flex items-center gap-3 flex-1">
+          {/* Centered Host Profile between the left (messages/back) and right (logout) areas */}
+          <div className="flex items-center gap-2 flex-1 justify-center">
             {hostUser.selfie_url ? (
               <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-purple-500">
                 <Image
@@ -277,17 +278,19 @@ setCurrentUser(currentUserData)
               </div>
             )}
 
-            <div>
+            <div className="hidden sm:block">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-white">{hostUser.username}</h2>
                 <Crown className="w-4 h-4 text-yellow-500" />
               </div>
               <p className="text-xs text-white/60">Host • Online</p>
             </div>
+
           </div>
 
-          <div className="flex items-center gap-2">
-            {currentUser.selfie_url ? (
+          {/* Right side: current user */}
+          <div className="flex items-center gap-2">{
+            currentUser.selfie_url ? (
               <div className="relative w-8 h-8 rounded-full overflow-hidden">
                 <Image
                   src={currentUser.selfie_url}

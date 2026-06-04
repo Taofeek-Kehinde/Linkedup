@@ -103,7 +103,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         } else if (eventData.starts_at) {
           expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < nowTime
         } else {
-          expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < nowTime
+          expired = new Date(eventData.created_at).getTime() + (15 * 60 * 60 * 1000) < nowTime
         }
 
         if (expired) {
@@ -176,7 +176,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       } else if (event.starts_at) {
         endTime = new Date(event.starts_at).getTime() + (event.duration_hours * 60 * 60 * 1000)
       } else {
-        endTime = new Date(event.created_at).getTime() + (6 * 60 * 60 * 1000)
+        endTime = new Date(event.created_at).getTime() + (15 * 60 * 60 * 1000)
       }
 
       const remaining = endTime - now
@@ -300,7 +300,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     setIsUpdating(true)
 
     const supabase = createClient()
-    const endTime = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+    const endTime = new Date(Date.now() + 15 * 60 * 60 * 1000).toISOString()
     const { data, error } = await supabase
       .from('events')
       .update({ 

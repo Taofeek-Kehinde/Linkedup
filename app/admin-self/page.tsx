@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense, useState, useCallback } from 'react'
+import { Suspense, useState, useCallback, useEffect } from 'react'
+
 
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
@@ -18,6 +19,56 @@ function AdminSelfContent() {
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null)
+
+  // no UI uses selfieUrl currently; keep state in case you expand later.
+
+
+  // If host selfie already exists for this event, skip selfie capture.
+  useEffect(() => {
+    async function maybeRedirect() {
+      if (!eventId) return
+
+      try {
+        const supabase = createClient()
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) return
+
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('id, host_id, host_selfie_url')
+          .eq('id', eventId)
+          .eq('host_id', user.id)
+          .single()
+
+        const hasEventSelfie = Boolean(eventData?.host_selfie_url)
+
+        if (hasEventSelfie) {
+          router.replace(`/admin/event/${eventId}/host-setup`)
+          return
+        }
+
+        const { data: hostEventUser } = await supabase
+          .from('event_users')
+          .select('id, selfie_url')
+          .eq('event_id', eventId)
+          .eq('auth_user_id', user.id)
+          .single()
+
+        if (hostEventUser?.selfie_url) {
+          router.replace(`/admin/event/${eventId}/host-setup`)
+          return
+        }
+      } catch {
+        // Ignore and allow selfie capture.
+      }
+    }
+
+    maybeRedirect()
+  }, [eventId, router])
 
   const handleSelfieCapture = useCallback(
     async (blob: Blob | null) => {

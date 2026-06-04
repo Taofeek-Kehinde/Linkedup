@@ -51,7 +51,7 @@ export default function ShowPage({ params }: { params: Promise<{ eventId: string
         } else if (eventData.starts_at) {
           expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < nowTime
         } else {
-          expired = new Date(eventData.created_at).getTime() + (6 * 60 * 60 * 1000) < nowTime
+          expired = new Date(eventData.created_at).getTime() + (15 * 60 * 60 * 1000) < nowTime
         }
 
         if (expired) {

@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [events, setEvents] = useState<Event[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeletingEnded, setIsDeletingEnded] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
       setUser(user)
 
       const now = new Date().toISOString()
-      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+      const fifteenHoursAgo = new Date(Date.now() - 15 * 60 * 60 * 1000).toISOString()
 
       // Auto-end any live events whose end time has passed (with ends_at set)
       await supabase
@@ -48,9 +49,9 @@ export default function AdminDashboard() {
         .eq('status', 'live')
         .is('ends_at', null)
         .not('starts_at', 'is', null)
-        .lt('starts_at', sixHoursAgo)
+        .lt('starts_at', fifteenHoursAgo)
 
-      // Auto-end live events with both ends_at and starts_at null that were created more than 6 hours ago
+      // Auto-end live events with both ends_at and starts_at null that were created more than 15 hours ago
       await supabase
         .from('events')
         .update({ status: 'ended', ends_at: now })
@@ -58,7 +59,7 @@ export default function AdminDashboard() {
         .eq('status', 'live')
         .is('ends_at', null)
         .is('starts_at', null)
-        .lt('created_at', sixHoursAgo)
+        .lt('created_at', fifteenHoursAgo)
 
       // Auto-start any upcoming events whose scheduled time has passed
       await supabase
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
         .update({ 
           status: 'live', 
           starts_at: now,
-          ends_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()
+          ends_at: new Date(Date.now() + 15 * 60 * 60 * 1000).toISOString()
         })
         .eq('host_id', user.id)
         .eq('status', 'upcoming')
@@ -102,14 +103,32 @@ export default function AdminDashboard() {
 
   const liveEvents = events.filter(e => e.status === 'live')
   const upcomingEvents = events.filter(e => e.status === 'upcoming')
-  const archivedEvents = events.filter(e => e.status === 'archived' || e.status === 'ended')
+  const endedEvents = events.filter(e => e.status === 'ended')
+  const archivedEvents = events.filter(e => e.status === 'archived')
 
-  const canDeleteEnded = (event: Event) => {
-    if (event.status !== 'ended') return false
-    const endedAtIso = (event as any).ends_at || (event as any).ended_at
-    if (!endedAtIso) return true
-    const endedAt = new Date(endedAtIso).getTime()
-    return Date.now() - endedAt >= 6 * 60 * 60 * 1000
+  async function handleDeleteEvent(eventId: string) {
+    const supabase = createClient()
+    await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId)
+
+    setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventId))
+  }
+
+  async function handleDeleteAllEnded() {
+    if (!user) return
+    setIsDeletingEnded(true)
+
+    const supabase = createClient()
+    await supabase
+      .from('events')
+      .delete()
+      .eq('host_id', user.id)
+      .eq('status', 'ended')
+
+    setEvents((prevEvents) => prevEvents.filter((event) => event.status !== 'ended'))
+    setIsDeletingEnded(false)
   }
 
   return (
@@ -192,6 +211,33 @@ export default function AdminDashboard() {
           </section>
         )}
 
+        {/* Ended Events */}
+        {endedEvents.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold text-foreground">Ended Events</h2>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAllEnded}
+                disabled={isDeletingEnded}
+                className="whitespace-nowrap"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeletingEnded ? 'Deleting…' : 'Delete All Ended'}
+              </Button>
+            </div>
+            {endedEvents.map(event => (
+              <EventCard
+                key={event.id}
+                event={event}
+                canDelete
+                onDelete={() => handleDeleteEvent(event.id)}
+              />
+            ))}
+          </section>
+        )}
+
         {/* Archived Events */}
         {archivedEvents.length > 0 && (
           <section className="space-y-3">
@@ -219,15 +265,7 @@ export default function AdminDashboard() {
   )
 }
 
-async function deleteEvent(eventId: string) {
-  const supabase = createClient()
-  await supabase
-    .from('events')
-    .delete()
-    .eq('id', eventId)
-}
-
-function EventCard({ event, canDelete }: { event: Event; canDelete?: boolean }) {
+function EventCard({ event, canDelete, onDelete }: { event: Event; canDelete?: boolean; onDelete?: () => void }) {
   const statusColors = {
     live: 'bg-green-500/20 text-green-400',
     upcoming: 'bg-yellow-500/20 text-yellow-400',
@@ -239,16 +277,33 @@ function EventCard({ event, canDelete }: { event: Event; canDelete?: boolean }) 
     <Link href={`/admin/event/${event.id}`}>
       <Card className="border-border/50 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer">
         <CardHeader className="pb-2">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle className="text-foreground text-lg">{event.show_name}</CardTitle>
               <CardDescription className="font-mono text-primary">
                 {event.event_code}
               </CardDescription>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${statusColors[event.status]}`}>
-              {event.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded-full ${statusColors[event.status]}`}>
+                {event.status}
+              </span>
+              {canDelete && onDelete && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onDelete()
+                  }}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">

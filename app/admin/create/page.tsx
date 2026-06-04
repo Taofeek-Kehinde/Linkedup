@@ -83,7 +83,7 @@ export default function CreateEventPage() {
     const isUpcoming = scheduledStartAt && scheduledStartAt.getTime() > now.getTime()
     const status = isUpcoming ? 'upcoming' : 'live'
     const startedAt = isUpcoming ? null : now.toISOString()
-    const endsAt = isUpcoming ? null : new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString()
+    const endsAt = isUpcoming ? null : new Date(now.getTime() + 15 * 60 * 60 * 1000).toISOString()
 
       const { data, error } = await supabase
       .from('events')
@@ -91,7 +91,7 @@ export default function CreateEventPage() {
         event_code: eventCode,
         show_name: showName.trim(),
         locations: locations,
-        duration_hours: 6,
+        duration_hours: 15,
         scheduled_start_at: scheduledStartIso,
         status,
         starts_at: startedAt,
@@ -117,6 +117,11 @@ export default function CreateEventPage() {
         <Spinner className="w-8 h-8" />
       </main>
     )
+  }
+
+  function toDateTimeLocal(date: Date) {
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
   }
 
   return (
@@ -241,12 +246,12 @@ export default function CreateEventPage() {
                 </Label>
                 <Input
                   type="datetime-local"
-                  value={scheduledStartAt ? scheduledStartAt.toISOString().slice(0, 16) : ''}
+                  value={scheduledStartAt ? toDateTimeLocal(scheduledStartAt) : ''}
                   onChange={(e) => setScheduledStartAt(e.target.value ? new Date(e.target.value) : null)}
                   className="bg-input"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional. When the event is scheduled to start.
+                  Optional. Choose any future start time, and the event will stay upcoming until that time. Once reached, it will begin and run for 15 hours.
                 </p>
               </div>
 
@@ -256,10 +261,10 @@ export default function CreateEventPage() {
                   Duration
                 </Label>
                 <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                  <span className="text-sm font-medium">6 hours</span>
+                  <span className="text-sm font-medium">15 hours</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Every event lasts exactly 6 hours.
+                  Every event lasts exactly 15 hours.
                 </p>
               </div>
 

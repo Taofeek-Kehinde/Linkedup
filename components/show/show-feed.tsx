@@ -239,8 +239,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
         <div className="flex items-center justify-between p-4">
           <div className="flex-1">
             <h1 className="font-bold text-foreground truncate">{event.show_name}</h1>
-            <div className="flex items-center justify-center mt-2">
-              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5">
+            <div className="flex items-center justify-center mt-2 relative">
+              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5 z-10">
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="text-sm font-mono font-bold text-primary">{timeRemaining}</span>
               </div>
