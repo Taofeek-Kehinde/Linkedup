@@ -5,6 +5,19 @@ export async function POST() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+  // Quick debug: verify env is loaded into the Next server process.
+  // Remove later.
+  console.log('[auto-start] has NEXT_PUBLIC_SUPABASE_URL', Boolean(supabaseUrl))
+  console.log('[auto-start] has SUPABASE_SERVICE_ROLE_KEY', Boolean(supabaseServiceKey))
+
+
+  // NOTE: if this route fails on Render/Vercel, it will surface as a 500 in the browser.
+  // Your current local call is returning: {"error":"Invalid API key"}.
+  // That typically means SUPABASE_SERVICE_ROLE_KEY is missing/incorrect in env.
+
+  // The most common cause is missing/incorrect SUPABASE_SERVICE_ROLE_KEY in env.
+
+
   if (!supabaseServiceKey) {
     return NextResponse.json({ started: 0, ended: 0, notice: 'Service role key not configured - auto-start disabled' })
   }
