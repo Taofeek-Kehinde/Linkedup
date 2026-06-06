@@ -101,12 +101,13 @@ export default function AdminPage() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30">
-            <Zap className="w-8 h-8 text-primary" />
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 overflow-hidden">
+            <img src="/logo.png" alt="LinkedUp" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">LinkedUp</h1>
           <p className="text-muted-foreground text-center">Host Portal</p>
         </div>
+
 
         {/* Auth Card */}
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
