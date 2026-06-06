@@ -23,24 +23,33 @@ export function UserCard({ user, onChat, onPass, canChat }: UserCardProps) {
   const selfieUrl = (user.selfie_url || '').trim()
   const showFallback = imageFailed || selfieUrl.length === 0
 
+
+
   return (
     <div className="h-full flex items-center justify-center p-6">
       <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
         <CardContent className="p-0">
           {/* Selfie or placeholder */}
-          <div className="aspect-square relative bg-gradient-to-br from-primary/20 to-accent/20">
+          <div className="aspect-square w-full relative bg-gradient-to-br from-primary/20 to-accent/20">
             {showFallback ? (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
               </div>
+
             ) : (
               <img
                 src={selfieUrl}
+
                 alt={user.username}
                 className="w-full h-full object-cover"
-                onError={() => setImageFailed(true)}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={() => {
+                  console.warn('Failed to load selfie image', { userId: user.id, selfieUrl })
+                  setImageFailed(true)
+                }}
               />
             )}
 

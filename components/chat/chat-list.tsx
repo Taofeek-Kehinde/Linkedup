@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ interface ChatWithPartner extends Chat {
 
 export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSelect }: ChatListProps) {
   const [timeRemaining, setTimeRemaining] = useState('')
+  const [failedSelfieUrls, setFailedSelfieUrls] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -53,6 +54,14 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
     }
     return () => clearInterval(interval)
   }, [event])
+
+  const markSelfieFailed = useCallback((url: string) => {
+    setFailedSelfieUrls((prev) => {
+      const next = new Set(prev)
+      next.add(url)
+      return next
+    })
+  }, [])
 
   const router = useRouter()
   const [chatsWithPartners, setChatsWithPartners] = useState<ChatWithPartner[]>([])
@@ -134,17 +143,22 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
               onClick={() => openChat(chat.id)}
             >
               <CardContent className="p-3 flex items-center gap-3">
-                {chat.partner?.selfie_url ? (
-                  <img 
-                    src={chat.partner.selfie_url} 
-                    alt={chat.partner.username}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-medium">
-                    {chat.partner?.username.slice(0, 2).toUpperCase() || '??'}
-                  </div>
-                )}
+                {(() => {
+                  const selfieUrl = (chat.partner?.selfie_url || '').trim()
+                  const showFallback = failedSelfieUrls.has(selfieUrl) || selfieUrl.length === 0
+                  return showFallback ? (
+                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-medium">
+                      {chat.partner?.username.slice(0, 2).toUpperCase() || '??'}
+                    </div>
+                  ) : (
+                    <img 
+                      src={selfieUrl}
+                      alt={chat.partner.username}
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={() => markSelfieFailed(selfieUrl)}
+                    />
+                  )
+                })()}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">
                     {chat.partner?.username || 'Unknown User'}

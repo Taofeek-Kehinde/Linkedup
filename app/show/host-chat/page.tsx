@@ -25,6 +25,8 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const [failedHostSelfie, setFailedHostSelfie] = useState(false)
+  const [failedUserSelfie, setFailedUserSelfie] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -221,20 +223,25 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
           
           {/* Host Profile */}
           <div className="flex items-center gap-3 flex-1">
-            {hostUser.selfie_url ? (
-              <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-purple-500">
-                <Image
-                  src={hostUser.selfie_url}
-                  alt={hostUser.username}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ) : (
+            {(() => {
+            const selfieUrl = (hostUser?.selfie_url || '').trim()
+            const showFallback = failedHostSelfie || selfieUrl.length === 0
+            return showFallback ? (
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center ring-2 ring-purple-500">
                 <Crown className="w-6 h-6 text-white" />
               </div>
-            )}
+            ) : (
+              <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-purple-500">
+                <Image
+                  src={selfieUrl}
+                  alt={hostUser.username}
+                  fill
+                  className="object-cover"
+                  onError={() => setFailedHostSelfie(true)}
+                />
+              </div>
+            )
+          })()}
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-white">{hostUser.username}</h2>
@@ -246,20 +253,25 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
 
           {/* Your Profile */}
           <div className="flex items-center gap-2">
-            {currentUser.selfie_url ? (
-              <div className="relative w-8 h-8 rounded-full overflow-hidden">
-                <Image
-                  src={currentUser.selfie_url}
-                  alt={currentUser.username}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600/50 to-pink-600/50 flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
-              </div>
-            )}
+            {(() => {
+              const selfieUrl = (currentUser?.selfie_url || '').trim()
+              const showFallback = failedUserSelfie || selfieUrl.length === 0
+              return showFallback ? (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600/50 to-pink-600/50 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              ) : (
+                <div className="relative w-8 h-8 rounded-full overflow-hidden">
+                  <Image
+                    src={selfieUrl}
+                    alt={currentUser.username}
+                    fill
+                    className="object-cover"
+                    onError={() => setFailedUserSelfie(true)}
+                  />
+                </div>
+              )
+            })()}
           </div>
         </div>
       </div>

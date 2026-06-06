@@ -21,19 +21,51 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Date.now()
     const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}.jpg`
-    
-    // Convert file to buffer
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: { persistSession: false, autoRefreshToken: false }
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    // Your console shows: {"error":"Invalid API key"} from /api/upload
+    // So make failures explicit and avoid silently using the wrong key.
+    if (!supabaseServiceKey && !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Supabase keys not configured' }, { status: 500 })
+    }
+
+    // Logs to debug 500 "Invalid API key"
+    // Debug env values actually present at runtime
+    console.log('[upload] supabaseUrl host', new URL(supabaseUrl).host)
+    console.log('[upload] has SUPABASE_SERVICE_ROLE_KEY', Boolean(supabaseServiceKey))
+    console.log('[upload] has NEXT_PUBLIC_SUPABASE_ANON_KEY', Boolean(supabaseAnonKey))
+    console.log(
+      '[upload] key prefix service',
+      supabaseServiceKey ? supabaseServiceKey.slice(0, 18) : 'none'
+    )
+    console.log(
+      '[upload] key prefix anon',
+      supabaseAnonKey ? supabaseAnonKey.slice(0, 18) : 'none'
+    )
+    console.log('[upload] using key:', supabaseServiceKey ? 'service_role' : 'anon')
+
+    // Storage upload should use the service role key (otherwise RLS/policies/auth may block)
+    const supabaseKeyToUse = supabaseServiceKey || supabaseAnonKey
+
+    if (!supabaseKeyToUse) {
+      return NextResponse.json({
+        error: 'Supabase key is missing',
+        supabaseUrlHost: new URL(supabaseUrl).host,
+      }, { status: 500 })
+    }
+
+
+
+    const supabase = createClient(supabaseUrl, supabaseKeyToUse, {
+      auth: { persistSession: false, autoRefreshToken: false },
     })
 
-    // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('selfies')
       .upload(filename, buffer, {
@@ -46,14 +78,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from('selfies')
       .getPublicUrl(filename)
 
+    if (!urlData?.publicUrl) {
+      return NextResponse.json({ error: 'Failed to generate public URL for selfie' }, { status: 500 })
+    }
+
     return NextResponse.json({ url: urlData.publicUrl })
   } catch (error) {
     console.error('Upload error:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Upload failed' }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Upload failed' },
+      { status: 500 }
+    )
   }
 }
+

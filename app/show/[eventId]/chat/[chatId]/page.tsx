@@ -45,6 +45,7 @@ export default function ChatPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>([])
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const [failedPartnerSelfie, setFailedPartnerSelfie] = useState(false)
 
   // Recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -586,19 +587,24 @@ mediaRecorder.onstop = async () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {partner?.selfie_url ? (
-            <div className="relative">
-              <img
-                src={partner.selfie_url}
-                alt={partner.username}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-              <User className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+          {(() => {
+            const selfieUrl = (partner?.selfie_url || '').trim()
+            const showFallback = failedPartnerSelfie || selfieUrl.length === 0
+            return showFallback ? (
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="relative">
+                <img
+                  src={selfieUrl}
+                  alt={partner.username}
+                  className="w-10 h-10 rounded-full object-cover"
+                  onError={() => setFailedPartnerSelfie(true)}
+                />
+              </div>
+            )
+          })()}
 
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-foreground truncate">{partner?.username || 'Unknown'}</h1>

@@ -236,43 +236,45 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       )}
 
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex-1">
-            <h1 className="font-bold text-foreground truncate">{event.show_name}</h1>
-            <div className="flex items-center justify-center mt-2 relative">
-              <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5 z-10">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-sm font-mono font-bold text-primary">{timeRemaining}</span>
-              </div>
+        {/* Event name centered on top, timer centered below */}
+        <div className="flex flex-col items-center p-4">
+          <h1 className="font-bold text-foreground text-center truncate max-w-full">{event.show_name}</h1>
+          <div className="flex items-center justify-center mt-2 relative">
+            <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5 z-10">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-sm font-mono font-bold text-primary">{timeRemaining}</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
-            <Button
-              variant="outline"
-className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-onClick={() => router.push(`/show/${event.id}/host-chat`)}
-              disabled={event.status !== 'live'}
-              title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
-            >
-              <UserIcon className="h-4 w-4 mr-2" />
-              {hostUser ? `Host: ${hostUser.username}` : 'Host'}
-            </Button>
-
-            {event.locations && event.locations.length > 1 && (
+          <div className="flex w-full justify-end">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
+              {/* Host button temporarily hidden (kept in code for later re-enable) */}
+              {/*
               <Button
-                variant="secondary"
-                className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full"
-                onClick={() => setShowLocations(true)}
+                variant="outline"
+                className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                onClick={() => router.push(`/show/${event.id}/host-chat`)}
+                disabled={event.status !== 'live'}
+                title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
               >
-                <Eye className="h-4 w-4 mr-2" />
-                Peep
+                <UserIcon className="h-4 w-4 mr-2" />
+                {hostUser ? `Host: ${hostUser.username}` : 'Host'}
               </Button>
-            )}
+              */}
+
+              {event.locations && event.locations.length > 1 && (
+                <Button
+                  variant="secondary"
+                  className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full"
+                  onClick={() => setShowLocations(true)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Peep
+                </Button>
+              )}
+            </div>
           </div>
-
         </div>
-
 
         <div className="flex items-center justify-between px-4 pb-3">
           <div className="flex items-center gap-2">
