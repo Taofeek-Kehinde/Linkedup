@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
 import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye, User as UserIcon } from 'lucide-react'
 import Image from 'next/image'
+
 
 import { UserCard } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
@@ -163,8 +164,122 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     loadVipUsers()
   }, [showVip, loadVipUsers])
 
+  // Real-time broadcast messages (admin -> all attendees)
+  const broadcastMsgIdsRef = useRef<Set<string>>(new Set())
+
+  // Real-time broadcast messages (admin -> all attendees)
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Debug: helps verify subscription is running for all attendees.
+    // Remove later if needed.
+    // console.log('broadcast subscription setup', event.id)
+
+
+    // Start with already-sent messages so late joiners / location switches still see them.
+    const loadExisting = async () => {
+      try {
+        // Include sender name if your RLS/query setup allows it.
+        // Otherwise we still do best-effort sender lookup after.
+        const { data } = await supabase
+          .from('broadcast_messages')
+          .select('id, content, sender_id, created_at')
+          .eq('event_id', event.id)
+          .order('created_at', { ascending: true })
+          .limit(50)
+
+
+        if (!data) return
+
+        // Seed ids to prevent duplicates when realtime inserts arrive.
+        data.forEach((m: any) => broadcastMsgIdsRef.current.add(m.id))
+
+        // Sender name lookup (best-effort, but avoids breaking UI)
+        const senderIds = Array.from(new Set(data.map((m: any) => m.sender_id).filter(Boolean)))
+        let senderMap: Record<string, string> = {}
+
+        if (senderIds.length) {
+          const { data: senders } = await supabase
+            .from('event_users')
+            .select('id, username')
+            .eq('event_id', event.id)
+            .in('id', senderIds)
+
+          if (senders) {
+            senderMap = Object.fromEntries(senders.map((s: any) => [s.id, s.username]))
+          }
+        }
+
+        const next = data.map((m: any) => ({
+          id: m.id,
+          content: m.content,
+          sender_name: senderMap[m.sender_id] || 'ADMIN',
+          created_at: m.created_at,
+        })) as BroadcastMessage[]
+
+        setBroadcastMessages(next)
+      } catch {
+        // ignore
+      }
+    }
+
+    loadExisting()
+
+    const channel = supabase
+      .channel(`event-${event.id}-broadcast`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'broadcast_messages',
+          filter: `event_id=eq.${event.id}`,
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          if (!msg?.id) return
+          if (broadcastMsgIdsRef.current.has(msg.id)) return
+          broadcastMsgIdsRef.current.add(msg.id)
+
+          let senderName = 'ADMIN'
+          try {
+            if (msg.sender_id) {
+              const { data: sender } = await supabase
+                .from('event_users')
+                .select('username')
+                .eq('event_id', event.id)
+                .eq('id', msg.sender_id)
+                .single()
+              if (sender?.username) senderName = sender.username
+            }
+          } catch {
+            // ignore
+          }
+
+          const nextMsg: BroadcastMessage = {
+            id: msg.id,
+            content: msg.content,
+            sender_name: senderName,
+            created_at: msg.created_at,
+          }
+
+          setBroadcastMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev
+            return [...prev, nextMsg].slice(-50)
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [event.id])
+
+
   useEffect(() => {
     function updateTimer() {
+
       const now = Date.now()
       let endTime = 0
 
@@ -248,7 +363,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
           <div className="flex w-full justify-end">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
-              {/* Host button temporarily hidden (kept in code for later re-enable) */}
+              {/* Host button (moved to bottom bar) */}
               {/*
               <Button
                 variant="outline"
@@ -261,6 +376,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                 {hostUser ? `Host: ${hostUser.username}` : 'Host'}
               </Button>
               */}
+
 
               {event.locations && event.locations.length > 1 && (
                 <Button
@@ -486,6 +602,18 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
             )}
+          </Button>
+
+          {/* Host/Admin button with icon + text */}
+          <Button
+            variant="outline"
+            className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
+            onClick={() => router.push(`/show/${event.id}/host-chat`)}
+            disabled={event.status !== 'live'}
+            title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
+          >
+            <UserIcon className="h-4 w-4 mr-2" />
+            {hostUser ? `Host: ${hostUser.username}` : 'Host'}
           </Button>
 
           <Button variant="ghost" size="icon" onClick={handleLeave}>

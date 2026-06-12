@@ -94,17 +94,78 @@ function AdminSelfContent() {
         if (userError) throw userError
         if (!user) throw new Error('Not authenticated')
 
-        const { error: saveError } = await supabase
+        // Save host selfie for BOTH:
+        // 1) event background: events.host_selfie_url
+        // 2) host avatar in host chat: event_users.selfie_url
+        //
+        // IMPORTANT: the host chat UI uses event_users.selfie_url (not events.host_selfie_url).
+
+        // Upload blob to Supabase Storage so we store a loadable public URL
+        // (host chat UI expects a normal URL, not a base64 data URL).
+        const filename = `${user.id}-${Date.now()}.jpg`
+        const filePath = `selfies/${eventId}/${filename}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('selfies')
+          .upload(filePath, blob, {
+            contentType: blob.type || 'image/jpeg',
+            upsert: true,
+          })
+
+        if (uploadError) {
+          console.error('[admin-self] Upload error:', uploadError)
+          toast({
+            title: 'Error',
+            description: 'Failed to upload host photo: ' + uploadError.message,
+            variant: 'destructive',
+          })
+          return
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('selfies')
+          .getPublicUrl(filePath)
+
+        const publicUrl = urlData?.publicUrl
+        if (!publicUrl) {
+          toast({
+            title: 'Error',
+            description: 'Failed to generate host photo URL',
+            variant: 'destructive',
+          })
+          return
+        }
+
+        // 1) Save background
+        const { error: saveEventError } = await supabase
           .from('events')
-          .update({ host_selfie_url: dataUrl })
+          .update({ host_selfie_url: publicUrl })
           .eq('id', eventId)
           .eq('host_id', user.id)
 
-        if (saveError) {
-          console.error('[admin-self] Save error:', saveError)
+        if (saveEventError) {
+          console.error('[admin-self] Save event error:', saveEventError)
           toast({
             title: 'Error',
-            description: 'Failed to save photo: ' + saveError.message,
+            description: 'Failed to save event background: ' + saveEventError.message,
+            variant: 'destructive',
+          })
+          return
+        }
+
+        // 2) Save host avatar
+        // Update existing host row (auth_user_id should match the current admin user)
+        const { error: saveUserError } = await supabase
+          .from('event_users')
+          .update({ selfie_url: publicUrl })
+          .eq('event_id', eventId)
+          .eq('auth_user_id', user.id)
+
+        if (saveUserError) {
+          console.error('[admin-self] Save event_users error:', saveUserError)
+          toast({
+            title: 'Error',
+            description: 'Failed to save host avatar: ' + saveUserError.message,
             variant: 'destructive',
           })
           return

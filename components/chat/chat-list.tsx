@@ -153,7 +153,7 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
                   ) : (
                     <img 
                       src={selfieUrl}
-                      alt={chat.partner.username}
+                      alt={chat.partner?.username || 'Partner'}
                       className="w-12 h-12 rounded-full object-cover"
                       onError={() => markSelfieFailed(selfieUrl)}
                     />

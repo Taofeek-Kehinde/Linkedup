@@ -141,8 +141,9 @@ export default function ChatPage() {
 
           if (newMsg.sender_id !== session?.eventUserId && session) {
             playBeep()
-            showNotification(newMsg.content, partner?.username || 'Chat')
+showNotification(newMsg.content, partner?.username || 'Chat')
           }
+
 
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev
@@ -156,6 +157,8 @@ export default function ChatPage() {
       supabase.removeChannel(channel)
     }
   }, [chat, chatId, session?.eventUserId, partner?.username])
+
+
 
   // Cleanup recording on unmount
   useEffect(() => {
@@ -349,9 +352,13 @@ export default function ChatPage() {
     setReplyTo(message)
   }
 
-  function cancelReply() {
-    setReplyTo(null)
-  }
+function cancelReply() {
+     setReplyTo(null)
+   }
+
+   function handleChatOptions() {
+     // Placeholder for chat options menu
+   }
 
   // Start video recording
   async function startVideoRecording() {
@@ -587,29 +594,37 @@ mediaRecorder.onstop = async () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {(() => {
-            const selfieUrl = (partner?.selfie_url || '').trim()
-            const showFallback = failedPartnerSelfie || selfieUrl.length === 0
-            return showFallback ? (
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="relative">
-                <img
-                  src={selfieUrl}
-                  alt={partner.username}
-                  className="w-10 h-10 rounded-full object-cover"
-                  onError={() => setFailedPartnerSelfie(true)}
-                />
-              </div>
-            )
-          })()}
+{(() => {
+             const selfieUrl = (partner?.selfie_url || '').trim()
+             const showFallback = failedPartnerSelfie || selfieUrl.length === 0
+             return showFallback ? (
+               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                 <User className="h-5 w-5 text-muted-foreground" />
+               </div>
+             ) : (
+               <div className="relative">
+                 <img
+                   src={selfieUrl}
+                   alt={partner?.username || 'Partner'}
+                   className="w-10 h-10 rounded-full object-cover"
+                   onError={() => setFailedPartnerSelfie(true)}
+                 />
+               </div>
+             )
+           })()}
 
-          <div className="flex-1 min-w-0">
-            <h1 className="font-semibold text-foreground truncate">{partner?.username || 'Unknown'}</h1>
-            <p className="text-xs font-mono text-muted-foreground">{partner?.vibe_key}</p>
-          </div>
+           <div className="flex-1 min-w-0">
+             <h1 className="font-semibold text-foreground truncate">{partner?.username || 'Unknown'}</h1>
+             <p className="text-xs font-mono text-muted-foreground">{partner?.vibe_key}</p>
+           </div>
+
+           <Button variant="ghost" size="sm" className="w-8 h-8 p-0" onClick={handleChatOptions}>
+             <div className="flex flex-col gap-1">
+               <div className="w-1 h-1 bg-white rounded-full"></div>
+               <div className="w-1 h-1 bg-white rounded-full"></div>
+               <div className="w-1 h-1 bg-white rounded-full"></div>
+             </div>
+           </Button>
         </div>
       </header>
 
@@ -666,9 +681,14 @@ mediaRecorder.onstop = async () => {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 -m-1 rounded-full hover:bg-accent/50 cursor-pointer">
-                        <MoreVertical className="h-3 w-3" />
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1 right-1 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/50 rounded-full"
+                        aria-label="Chat message options"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent sideOffset={5} align="end" className="w-32 p-1">
                       <DropdownMenuItem
@@ -679,6 +699,7 @@ mediaRecorder.onstop = async () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+
                 </div>
               </div>
             )
