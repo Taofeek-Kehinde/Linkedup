@@ -59,10 +59,28 @@ export default function ChatPage() {
   const [reportReason, setReportReason] = useState('')
   const [isProcessingAction, setIsProcessingAction] = useState(false)
 
+  const [blockedPopupOpen, setBlockedPopupOpen] = useState(false)
+  const [blockedPopupText, setBlockedPopupText] = useState('')
+
+
   // Recording states
   const [isRecording, setIsRecording] = useState(false)
   const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
+
+  async function hasBlockedRelation(supabase: ReturnType<typeof createClient>, user1Id: string, user2Id: string) {
+    const { data } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .eq('event_id', eventId)
+      .or(
+        `and(blocker_id.eq.${user1Id},blocked_id.eq.${user2Id}),and(blocker_id.eq.${user2Id},blocked_id.eq.${user1Id})`
+      )
+      .limit(1)
+      .single()
+
+    return Boolean(data)
+  }
 
   // Load initial data
   useEffect(() => {
@@ -102,6 +120,16 @@ if (!chatData) {
       const partnerId = chatData.user1_id === localSession.eventUserId
         ? chatData.user2_id
         : chatData.user1_id
+
+      const isBlocked = await hasBlockedRelation(supabase, localSession.eventUserId, partnerId)
+      if (isBlocked) {
+        setChat(chatData)
+        setBlockedPopupText('This conversation is blocked. You cannot send messages.')
+        setBlockedPopupOpen(true)
+        setIsLoading(false)
+        return
+      }
+
 
       const { data: partnerData } = await supabase
         .from('event_users')
@@ -295,13 +323,19 @@ return () => {
   }, [messages])
 
   async function sendMessage(content: string, type: 'text' | 'video' | 'audio' = 'text') {
-    if (!session || isSending) return
+    if (!session || !chat || !partner || isSending) return
+
+    const supabase = createClient()
+    const isBlocked = await hasBlockedRelation(supabase, session.eventUserId, partner.id)
+    if (isBlocked) {
+      router.push(`/show/${eventId}`)
+      return
+    }
 
     setIsSending(true)
     const replyToId = replyTo?.id || null
     setReplyTo(null)
 
-    const supabase = createClient()
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -413,13 +447,19 @@ function cancelReply() {
    }
 
    async function blockUser() {
-     if (!partner || !chat || isProcessingAction) return
-     
+     if (!partner || !chat || !session || isProcessingAction) return
+
      setIsProcessingAction(true)
      const supabase = createClient()
-     
+
+     await supabase.from('blocked_users').insert({
+       event_id: eventId,
+       blocker_id: session.eventUserId,
+       blocked_id: partner.id,
+     })
+
      await supabase.from('chats').update({ is_active: false }).eq('id', chat.id)
-     
+
      setShowBlockDialog(false)
      setIsProcessingAction(false)
      router.push(`/show/${eventId}`)
@@ -643,6 +683,32 @@ mediaRecorder.onstop = async () => {
         </div>
       )}
 
+
+      {/* Stylish blocked popup */}
+      {blockedPopupOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md shadow-2xl">
+            <div className="p-5 border-b border-white/10">
+              <p className="text-sm font-semibold text-white/80">Conversation</p>
+              <h2 className="text-lg font-bold text-white">Blocked</h2>
+            </div>
+            <div className="p-5">
+              <p className="text-white/70 text-sm leading-relaxed">{blockedPopupText}</p>
+            </div>
+            <div className="p-5 flex justify-end">
+              <Button
+                onClick={() => {
+                  setBlockedPopupOpen(false)
+                  router.push(`/show/${eventId}`)
+                }}
+                className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
+              >
+                Back to chat list
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">

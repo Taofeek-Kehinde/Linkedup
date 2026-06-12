@@ -16,14 +16,19 @@ interface ChatListProps {
   event: Event
   onClose: () => void
   onChatSelect?: (chatId: string) => void
+  isHost?: boolean
+  chatId?: string | null
+  blockedIds?: Set<string>
 }
+
 
 interface ChatWithPartner extends Chat {
   partner?: EventUser
   lastMessage?: string
 }
 
-export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSelect }: ChatListProps) {
+export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSelect, chatId, blockedIds }: ChatListProps) {
+
   const [timeRemaining, setTimeRemaining] = useState('')
   const [failedSelfieUrls, setFailedSelfieUrls] = useState<Set<string>>(new Set())
 
@@ -106,6 +111,12 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
   }, [chats, currentUser.id])
 
   function openChat(chatId: string) {
+    const chat = chatsWithPartners.find((item) => item.id === chatId)
+    if (chat) {
+      const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
+      if (blockedIds?.has(partnerId)) return
+    }
+
     if (onChatSelect) {
       onChatSelect(chatId)
     } else {
@@ -113,19 +124,34 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
     }
   }
 
+  const visibleChats = chatsWithPartners.filter((chat) => {
+    const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
+    return chat.is_active && chat.partner && !blockedIds?.has(partnerId)
+  })
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/50">
-        <h2 className="text-lg font-semibold text-foreground">Your Chats</h2>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-5 w-5" />
-        </Button>
+      <div className="p-4 border-b border-border/50">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Your Chats</h2>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Timer directly under header so it stays at the top and list scrolls below */}
+        <div className="mt-2 flex items-center justify-center gap-2 text-sm font-mono font-bold text-primary">
+          <Clock className="h-4 w-4" />
+          <span>{timeRemaining || 'Loading...'}</span>
+        </div>
       </div>
 
+
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {chatsWithPartners.length === 0 ? (
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-white/5">
+
+        {visibleChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <MessageCircle className="w-8 h-8 text-primary" />
@@ -136,12 +162,11 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
             </p>
           </div>
 ) : (
-           chatsWithPartners
-             .filter(chat => chat.is_active)
+           visibleChats
              .map((chat) => (
-            <Card 
+              <Card 
               key={chat.id} 
-              className="border-border/50 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer"
+              className={`border-border/50 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer ${chatId === chat.id ? 'ring-2 ring-purple-500' : ''}`}
               onClick={() => openChat(chat.id)}
             >
               <CardContent className="p-3 flex items-center gap-3">
@@ -183,7 +208,7 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
                       ? `Last seen ${new Date(chat.partner.last_seen).toLocaleTimeString()}`
                       : ''}
                   </p>
-                  <p className="text-sm text-muted-foreground truncate">
+            <p className="text-sm text-muted-foreground truncate">
                     {chat.lastMessage}
                   </p>
                 </div>
@@ -194,13 +219,6 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
         )}
       </div>
 
-      {/* Live timer - same as show-feed */}
-      <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2 text-sm font-mono font-bold text-primary text-center mx-auto">
-          <Clock className="h-4 w-4" />
-          <span>{timeRemaining || 'Loading...'}</span>
-        </div>
-      </div>
     </div>
   )
 }

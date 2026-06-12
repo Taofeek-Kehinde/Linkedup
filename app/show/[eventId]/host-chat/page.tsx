@@ -327,6 +327,7 @@ setCurrentUser(currentUserData)
             currentUser={currentUser}
             eventId={eventId}
             event={event}
+            chatId={chatId}
             onClose={() => router.push(`/admin/event/${eventId}/host-setup`)}
             onChatSelect={async (selectedChatId) => {
               setChatId(selectedChatId)

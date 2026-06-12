@@ -21,6 +21,11 @@ interface BroadcastMessage {
   created_at: string
 }
 
+interface BlockedUserRelation {
+  blocker_id: string
+  blocked_id: string
+}
+
 interface ShowFeedProps {
   event: Event
   currentUser: EventUser
@@ -55,6 +60,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   const [showChats, setShowChats] = useState(false)
   const [chats, setChats] = useState<Chat[]>([])
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -70,6 +76,20 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   async function handleStartChat(targetUser: EventUser) {
     const supabase = createClient()
+
+    const { data: blockedRelation } = await supabase
+      .from('blocked_users')
+      .select('id')
+      .eq('event_id', event.id)
+      .or(
+        `and(blocker_id.eq.${currentUser.id},blocked_id.eq.${targetUser.id}),and(blocker_id.eq.${targetUser.id},blocked_id.eq.${currentUser.id})`
+      )
+      .limit(1)
+      .single()
+
+    if (blockedRelation) {
+      return
+    }
 
     const { data: existingChat } = await supabase
       .from('chats')
@@ -109,8 +129,23 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .neq('id', currentUser.id)
       .order('created_at', { ascending: false })
 
-    setUsers(data || [])
-    setUserCount((data?.length || 0) + 1)
+    const { data: blockedRelations } = await supabase
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .eq('event_id', event.id)
+      .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`)
+
+    const hiddenIds = new Set<string>()
+    ;(blockedRelations || []).forEach((relation: BlockedUserRelation) => {
+      hiddenIds.add(relation.blocker_id)
+      hiddenIds.add(relation.blocked_id)
+    })
+
+    const visibleUsers = (data || []).filter((user) => !hiddenIds.has(user.id))
+
+    setBlockedIds(hiddenIds)
+    setUsers(visibleUsers)
+    setUserCount(visibleUsers.length + 1)
   }, [event.id, currentUser.id])
 
   const loadVipUsers = useCallback(async () => {
@@ -121,8 +156,20 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .eq('event_id', event.id)
       .eq('is_vip', true)
 
-    setVipUsers(data || [])
-  }, [event.id])
+    const { data: blockedRelations } = await supabase
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .eq('event_id', event.id)
+      .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`)
+
+    const hiddenIds = new Set<string>()
+    ;(blockedRelations || []).forEach((relation: BlockedUserRelation) => {
+      hiddenIds.add(relation.blocker_id)
+      hiddenIds.add(relation.blocked_id)
+    })
+
+    setVipUsers((data || []).filter((vip) => !hiddenIds.has(vip.id)))
+  }, [event.id, currentUser.id])
 
   // Host user lookup
   useEffect(() => {
@@ -144,6 +191,28 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   const loadChats = useCallback(async () => {
     const supabase = createClient()
+    const { data: blockedRelations } = await supabase
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .eq('event_id', event.id)
+      .or(`blocker_id.eq.${currentUser.id},blocked_id.eq.${currentUser.id}`)
+
+    const blockedPartnerIds = new Set<string>()
+    const hiddenIds = new Set<string>()
+    ;(blockedRelations || []).forEach((relation: BlockedUserRelation) => {
+      hiddenIds.add(relation.blocker_id)
+      hiddenIds.add(relation.blocked_id)
+
+      if (relation.blocker_id === currentUser.id) {
+        blockedPartnerIds.add(relation.blocked_id)
+      }
+      if (relation.blocked_id === currentUser.id) {
+        blockedPartnerIds.add(relation.blocker_id)
+      }
+    })
+
+    setBlockedIds(hiddenIds)
+
     const { data } = await supabase
       .from('chats')
       .select('*')
@@ -151,13 +220,22 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .or(`user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}`)
       .eq('is_active', true)
 
-    setChats(data || [])
+    setChats((data || []).filter((chat) => {
+      const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
+      return !blockedPartnerIds.has(partnerId)
+    }))
   }, [event.id, currentUser.id])
 
   useEffect(() => {
     loadUsers()
     loadChats()
   }, [loadUsers, loadChats])
+
+  useEffect(() => {
+    if (users.length > 0 && currentIndex >= users.length) {
+      setCurrentIndex(0)
+    }
+  }, [users.length, currentIndex])
 
   useEffect(() => {
     if (!showVip) return
@@ -557,6 +635,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           currentUser={currentUser}
           eventId={event.id}
           event={event}
+          blockedIds={blockedIds}
           onClose={() => setShowChats(false)}
         />
       ) : (

@@ -50,6 +50,14 @@ export interface Message {
   message_type: 'text' | 'video' | 'audio'
 }
 
+export interface BlockedUser {
+  id: string
+  event_id: string
+  blocker_id: string
+  blocked_id: string
+  created_at: string
+}
+
 // Extended types with relations
 export interface EventUserWithEvent extends EventUser {
   event?: Event
