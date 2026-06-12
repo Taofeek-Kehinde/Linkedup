@@ -25,81 +25,99 @@ export function UserCard({ user, onChat, onPass, canChat }: UserCardProps) {
 
 
 
-  return (
-    <div className="h-full flex items-center justify-center p-6">
-      <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
-        <CardContent className="p-0">
-          {/* Selfie or placeholder */}
-          <div className="aspect-square w-full relative bg-gradient-to-br from-primary/20 to-accent/20">
-            {showFallback ? (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-                  {user.username.charAt(0).toUpperCase()}
-                </div>
-              </div>
+return (
+     <div className="h-full flex items-center justify-center p-6">
+       <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
+         <CardContent className="p-0">
+           {/* Selfie or placeholder */}
+           <div className="aspect-square w-full relative bg-gradient-to-br from-primary/20 to-accent/20">
+             {(() => {
+               const selfieUrl = (user.selfie_url || '').trim()
+               const showFallback = imageFailed || selfieUrl.length === 0
+               const isActive = user.is_active && !user.last_seen
+               return showFallback ? (
+                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+                   <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                     {user.username.charAt(0).toUpperCase()}
+                   </div>
+                   {isActive && (
+                     <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background"></div>
+                   )}
+                 </div>
+               ) : (
+                 <>
+                   <img
+                     src={selfieUrl}
+                     alt={user.username}
+                     className="w-full h-full object-cover"
+                     loading="lazy"
+                     referrerPolicy="no-referrer"
+                     onError={() => {
+                       console.warn('Failed to load selfie image', { userId: user.id, selfieUrl })
+                       setImageFailed(true)
+                     }}
+                   />
+                   {isActive && (
+                     <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background"></div>
+                   )}
+                 </>
+               )
+             })()}
 
-            ) : (
-              <img
-                src={selfieUrl}
+             {/* Overlay gradient */}
+             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card to-transparent" />
 
-                alt={user.username}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                onError={() => {
-                  console.warn('Failed to load selfie image', { userId: user.id, selfieUrl })
-                  setImageFailed(true)
-                }}
-              />
-            )}
+             {/* VIP tick */}
+             {user.is_vip && (
+               <div className="absolute top-3 right-3">
+                 <img src="/tick.png" alt="VIP" className="w-8 h-8 drop-shadow-lg" />
+               </div>
+             )}
+           </div>
 
-            {/* Overlay gradient */}
-            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card to-transparent" />
+           {/* User info */}
+           <div className="p-4 space-y-4 -mt-16 relative">
+             <div className="flex items-end justify-between">
+               <div className="flex items-center gap-2">
+                 <h2 className="text-2xl font-bold text-foreground">{user.username}</h2>
+                 {user.is_vip && <img src="/tick.png" alt="VIP" className="w-6 h-6" />}
+               </div>
+               <div className="flex items-center gap-2">
+                 {user.is_upgraded && (
+                   <Badge className="bg-accent text-accent-foreground">Upgraded</Badge>
+                 )}
+               </div>
+             </div>
+             <p className="text-sm font-mono text-primary">{user.vibe_key}</p>
+             <p className="text-xs text-muted-foreground">
+               {user.is_active && !user.last_seen
+                 ? 'Online'
+                 : user.last_seen
+                 ? `Last seen ${new Date(user.last_seen).toLocaleTimeString()}`
+                 : 'Offline'}
+             </p>
 
-            {/* VIP tick */}
-            {user.is_vip && (
-              <div className="absolute top-3 right-3">
-                <img src="/tick.png" alt="VIP" className="w-8 h-8 drop-shadow-lg" />
-              </div>
-            )}
-          </div>
-
-          {/* User info */}
-          <div className="p-4 space-y-4 -mt-16 relative">
-            <div className="flex items-end justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-foreground">{user.username}</h2>
-                {user.is_vip && <img src="/tick.png" alt="VIP" className="w-6 h-6" />}
-              </div>
-              <div className="flex items-center gap-2">
-                {user.is_upgraded && (
-                  <Badge className="bg-accent text-accent-foreground">Upgraded</Badge>
-                )}
-              </div>
-            </div>
-            <p className="text-sm font-mono text-primary">{user.vibe_key}</p>
-
-            {/* Pass / Peep buttons */}
-            <div className="flex gap-4 pt-2">
-              <Button
-                className="flex-1 h-14 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                size="lg"
-                onClick={onPass}
-              >
-                Pass
-              </Button>
-              <Button
-                className="flex-1 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white"
-                size="lg"
-                onClick={onChat}
-              >
-                Peep
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+             {/* Pass / Peep buttons */}
+             <div className="flex gap-4 pt-2">
+               <Button
+                 className="flex-1 h-14 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                 size="lg"
+                 onClick={onPass}
+               >
+                 Pass
+               </Button>
+               <Button
+                 className="flex-1 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                 size="lg"
+                 onClick={onChat}
+               >
+                 Peep
+               </Button>
+             </div>
+           </div>
+         </CardContent>
+       </Card>
+     </div>
+   )
 }
 

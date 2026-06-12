@@ -17,6 +17,14 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useCallback } from 'react'
 import EmojiPicker from 'emoji-picker-react'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 export default function ChatPage() {
   const params = useParams()
@@ -46,6 +54,10 @@ export default function ChatPage() {
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>([])
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
   const [failedPartnerSelfie, setFailedPartnerSelfie] = useState(false)
+  const [showReportDialog, setShowReportDialog] = useState(false)
+  const [showBlockDialog, setShowBlockDialog] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [isProcessingAction, setIsProcessingAction] = useState(false)
 
   // Recording states
   const [isRecording, setIsRecording] = useState(false)
@@ -76,11 +88,15 @@ export default function ChatPage() {
         .eq('id', chatId)
         .single()
 
-      if (!chatData) {
-        router.push(`/show/${eventId}`)
-        return
-      }
-      setChat(chatData)
+if (!chatData) {
+         router.push(`/show/${eventId}`)
+         return
+       }
+       if (!chatData.is_active) {
+         router.push(`/show/${eventId}`)
+         return
+       }
+       setChat(chatData)
 
       // Load partner
       const partnerId = chatData.user1_id === localSession.eventUserId
@@ -153,10 +169,32 @@ showNotification(newMsg.content, partner?.username || 'Chat')
       )
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [chat, chatId, session?.eventUserId, partner?.username])
+return () => {
+       supabase.removeChannel(channel)
+     }
+   }, [chat, chatId, session?.eventUserId, partner?.username])
+
+   // Real-time subscription for partner presence
+   useEffect(() => {
+     if (!partner) return
+
+     const supabase = createClient()
+     const channel = supabase
+       .channel(`partner-${partner.id}-presence`)
+       .on(
+         'postgres_changes',
+         { event: 'UPDATE', schema: 'public', table: 'event_users', filter: `id=eq.${partner.id}` },
+         (payload) => {
+           const updatedPartner = payload.new as EventUser
+           setPartner(updatedPartner)
+         }
+       )
+       .subscribe()
+
+     return () => {
+       supabase.removeChannel(channel)
+     }
+   }, [partner?.id])
 
 
 
@@ -356,8 +394,35 @@ function cancelReply() {
      setReplyTo(null)
    }
 
-   function handleChatOptions() {
-     // Placeholder for chat options menu
+   async function reportUser() {
+     if (!partner || !reportReason.trim() || !chat || isProcessingAction) return
+     
+     setIsProcessingAction(true)
+     const supabase = createClient()
+     
+     await supabase.from('reports').insert({
+       event_id: eventId,
+       reporter_id: session?.eventUserId,
+       reported_id: partner.id,
+       reason: reportReason,
+     })
+     
+     setShowReportDialog(false)
+     setReportReason('')
+     setIsProcessingAction(false)
+   }
+
+   async function blockUser() {
+     if (!partner || !chat || isProcessingAction) return
+     
+     setIsProcessingAction(true)
+     const supabase = createClient()
+     
+     await supabase.from('chats').update({ is_active: false }).eq('id', chat.id)
+     
+     setShowBlockDialog(false)
+     setIsProcessingAction(false)
+     router.push(`/show/${eventId}`)
    }
 
   // Start video recording
@@ -590,16 +655,22 @@ mediaRecorder.onstop = async () => {
           </div>
         )}
         <div className="flex items-center gap-3 p-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push(`/show/${eventId}`)}>
+<Button variant="ghost" size="icon" onClick={() => router.push(`/show/${eventId}`)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
 {(() => {
              const selfieUrl = (partner?.selfie_url || '').trim()
              const showFallback = failedPartnerSelfie || selfieUrl.length === 0
+             const isActive = partner?.is_active && !partner?.last_seen
              return showFallback ? (
-               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                 <User className="h-5 w-5 text-muted-foreground" />
+               <div className="relative">
+                 <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                   <User className="h-5 w-5 text-muted-foreground" />
+                 </div>
+                 {isActive && (
+                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                 )}
                </div>
              ) : (
                <div className="relative">
@@ -609,26 +680,99 @@ mediaRecorder.onstop = async () => {
                    className="w-10 h-10 rounded-full object-cover"
                    onError={() => setFailedPartnerSelfie(true)}
                  />
+                 {isActive && (
+                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                 )}
                </div>
              )
            })()}
 
            <div className="flex-1 min-w-0">
              <h1 className="font-semibold text-foreground truncate">{partner?.username || 'Unknown'}</h1>
-             <p className="text-xs font-mono text-muted-foreground">{partner?.vibe_key}</p>
+             <p className="text-xs font-mono text-muted-foreground">
+               {partner?.is_active && !partner?.last_seen
+                 ? 'Online'
+                 : partner?.last_seen
+                 ? `Last seen ${new Date(partner.last_seen).toLocaleTimeString()}`
+                 : partner?.vibe_key}
+             </p>
            </div>
 
-           <Button variant="ghost" size="sm" className="w-8 h-8 p-0" onClick={handleChatOptions}>
-             <div className="flex flex-col gap-1">
-               <div className="w-1 h-1 bg-white rounded-full"></div>
-               <div className="w-1 h-1 bg-white rounded-full"></div>
-               <div className="w-1 h-1 bg-white rounded-full"></div>
-             </div>
-           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
+                <div className="flex flex-col gap-1">
+                  <div className="w-1 h-1 bg-white rounded-full"></div>
+                  <div className="w-1 h-1 bg-white rounded-full"></div>
+                  <div className="w-1 h-1 bg-white rounded-full"></div>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
+                Report User
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowBlockDialog(true)} className="text-destructive">
+                Block User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      {/* Messages */}
+      {/* Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report {partner?.username}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Why are you reporting this user?"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              rows={3}
+            />
+            <Button onClick={reportUser} disabled={!reportReason.trim() || isProcessingAction} className="w-full">
+              Submit Report
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Dialog */}
+      <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block {partner?.username}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will end the conversation and prevent future messages from this user.
+            </p>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowBlockDialog(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={blockUser}
+                disabled={isProcessingAction}
+                className="flex-1"
+              >
+                Block
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+         </Dialog>
+
+         {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">

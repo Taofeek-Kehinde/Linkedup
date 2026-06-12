@@ -135,8 +135,10 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
               Browse the feed and start a conversation with someone interesting!
             </p>
           </div>
-        ) : (
-          chatsWithPartners.map((chat) => (
+) : (
+           chatsWithPartners
+             .filter(chat => chat.is_active)
+             .map((chat) => (
             <Card 
               key={chat.id} 
               className="border-border/50 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer"
@@ -146,22 +148,40 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
                 {(() => {
                   const selfieUrl = (chat.partner?.selfie_url || '').trim()
                   const showFallback = failedSelfieUrls.has(selfieUrl) || selfieUrl.length === 0
+                  const isActive = chat.partner?.is_active && !chat.partner?.last_seen
                   return showFallback ? (
-                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-medium">
-                      {chat.partner?.username.slice(0, 2).toUpperCase() || '??'}
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground font-medium">
+                        {chat.partner?.username.slice(0, 2).toUpperCase() || '??'}
+                      </div>
+                      {isActive && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                      )}
                     </div>
                   ) : (
-                    <img 
-                      src={selfieUrl}
-                      alt={chat.partner?.username || 'Partner'}
-                      className="w-12 h-12 rounded-full object-cover"
-                      onError={() => markSelfieFailed(selfieUrl)}
-                    />
+                    <div className="relative">
+                      <img 
+                        src={selfieUrl}
+                        alt={chat.partner?.username || 'Partner'}
+                        className="w-12 h-12 rounded-full object-cover"
+                        onError={() => markSelfieFailed(selfieUrl)}
+                      />
+                      {isActive && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                      )}
+                    </div>
                   )
                 })()}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">
                     {chat.partner?.username || 'Unknown User'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {chat.partner?.is_active && !chat.partner?.last_seen
+                      ? 'Online'
+                      : chat.partner?.last_seen
+                      ? `Last seen ${new Date(chat.partner.last_seen).toLocaleTimeString()}`
+                      : ''}
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
                     {chat.lastMessage}
