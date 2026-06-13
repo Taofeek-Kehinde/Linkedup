@@ -388,7 +388,7 @@ setCurrentUser(currentUserData)
           {/* Centered Host Profile between the left (messages/back) and right (logout) areas */}
           <div className="flex items-center gap-2 flex-1 justify-center">
             {(() => {
-              const selfieUrl = (hostUser?.selfie_url || '').trim()
+              const selfieUrl = (hostUser?.selfie_url || event?.host_selfie_url || '').trim()
               const showFallback = failedHostSelfie || selfieUrl.length === 0
               return showFallback ? (
                 <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center ring-2 ring-purple-500">
@@ -417,26 +417,19 @@ setCurrentUser(currentUserData)
           </div>
 
           {/* Right side: current user */}
+          {/* Right side: go to host profile */}
           <div className="flex items-center gap-2">
-            {(() => {
-              const selfieUrl = (currentUser?.selfie_url || '').trim()
-              const showFallback = failedCurrentUserSelfie || selfieUrl.length === 0
-              return showFallback ? (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600/50 to-pink-600/50 flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              ) : (
-                <div className="relative w-8 h-8 rounded-full overflow-hidden">
-                  <Image
-                    src={selfieUrl}
-                    alt={currentUser.username}
-                    fill
-                    className="object-cover"
-                    onError={() => setFailedCurrentUserSelfie(true)}
-                  />
-                </div>
-              )
-            })()}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push(`/show/${eventId}`)}
+              className="text-white/70 hover:text-white hover:bg-white/10 rounded-full"
+              aria-label="Go to host profile"
+              title="Host profile"
+            >
+              {/* Team: use an icon that clearly indicates host/profile */}
+              <Crown className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>

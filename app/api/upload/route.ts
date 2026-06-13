@@ -29,10 +29,8 @@ export async function POST(request: NextRequest) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    // Your console shows: {"error":"Invalid API key"} from /api/upload
-    // So make failures explicit and avoid silently using the wrong key.
-    if (!supabaseServiceKey && !supabaseAnonKey) {
-      return NextResponse.json({ error: 'Supabase keys not configured' }, { status: 500 })
+    if (!supabaseServiceKey) {
+      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is required for uploads' }, { status: 500 })
     }
 
     // Logs to debug 500 "Invalid API key"
@@ -50,19 +48,8 @@ export async function POST(request: NextRequest) {
     )
     console.log('[upload] using key:', supabaseServiceKey ? 'service_role' : 'anon')
 
-    // Storage upload should use the service role key (otherwise RLS/policies/auth may block)
-    const supabaseKeyToUse = supabaseServiceKey || supabaseAnonKey
-
-    if (!supabaseKeyToUse) {
-      return NextResponse.json({
-        error: 'Supabase key is missing',
-        supabaseUrlHost: new URL(supabaseUrl).host,
-      }, { status: 500 })
-    }
-
-
-
-    const supabase = createClient(supabaseUrl, supabaseKeyToUse, {
+    // Storage upload should use the service role key so Vercel uploads are not blocked by RLS.
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
 

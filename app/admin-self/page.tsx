@@ -153,22 +153,54 @@ function AdminSelfContent() {
           return
         }
 
-        // 2) Save host avatar
-        // Update existing host row (auth_user_id should match the current admin user)
-        const { error: saveUserError } = await supabase
+        let { data: hostEventUser } = await supabase
           .from('event_users')
-          .update({ selfie_url: publicUrl })
+          .select('id')
           .eq('event_id', eventId)
           .eq('auth_user_id', user.id)
+          .single()
 
-        if (saveUserError) {
-          console.error('[admin-self] Save event_users error:', saveUserError)
-          toast({
-            title: 'Error',
-            description: 'Failed to save host avatar: ' + saveUserError.message,
-            variant: 'destructive',
-          })
-          return
+        if (!hostEventUser) {
+          const { data: created, error: createError } = await supabase
+            .from('event_users')
+            .insert({
+              event_id: eventId,
+              auth_user_id: user.id,
+              username: 'HOST',
+              vibe_key: 'host',
+              session_token: `host-${eventId}-${user.id}`,
+              selfie_url: publicUrl,
+              is_active: true,
+            })
+            .select('id')
+            .single()
+
+          if (createError || !created) {
+            console.error('[admin-self] Create host event user error:', createError)
+            toast({
+              title: 'Error',
+              description: 'Failed to create host profile: ' + (createError?.message || 'Unknown error'),
+              variant: 'destructive',
+            })
+            return
+          }
+
+          hostEventUser = created
+        } else {
+          const { error: saveUserError } = await supabase
+            .from('event_users')
+            .update({ selfie_url: publicUrl })
+            .eq('id', hostEventUser.id)
+
+          if (saveUserError) {
+            console.error('[admin-self] Save event_users error:', saveUserError)
+            toast({
+              title: 'Error',
+              description: 'Failed to save host avatar: ' + saveUserError.message,
+              variant: 'destructive',
+            })
+            return
+          }
         }
 
         toast({
