@@ -212,7 +212,7 @@ export function ChatList({ chats, currentUser, eventId, event, onClose, onChatSe
                     {chat.lastMessage}
                   </p>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
               </CardContent>
             </Card>
           ))

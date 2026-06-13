@@ -231,13 +231,13 @@ function AdminSelfContent() {
         <div className="absolute bottom-10 right-10 w-80 h-80 bg-pink-600 rounded-full mix-blend-screen filter blur-3xl animate-float-2 opacity-20"></div>
         <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-600 rounded-full mix-blend-screen filter blur-3xl animate-float-3 opacity-15"></div>
         <div className="absolute bottom-1/3 left-1/4 w-96 h-96 bg-indigo-600 rounded-full mix-blend-screen filter blur-3xl animate-float-4 opacity-15"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-500 rounded-full mix-blend-screen filter blur-3xl animate-pulse-slow opacity-10"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-purple-500 rounded-full mix-blend-screen filter blur-3xl animate-pulse-slow opacity-10"></div>
         
         {/* Animated gradient lines */}
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-slide-right"></div>
-          <div className="absolute top-2/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-pink-500 to-transparent animate-slide-left animation-delay-1000"></div>
-          <div className="absolute top-3/4 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent animate-slide-right animation-delay-2000"></div>
+          <div className="absolute top-1/4 left-0 right-0 h-px bg-linear-to-r from-transparent via-purple-500 to-transparent animate-slide-right"></div>
+          <div className="absolute top-2/4 left-0 right-0 h-px bg-linear-to-r from-transparent via-pink-500 to-transparent animate-slide-left animation-delay-1000"></div>
+          <div className="absolute top-3/4 left-0 right-0 h-px bg-linear-to-r from-transparent via-indigo-500 to-transparent animate-slide-right animation-delay-2000"></div>
         </div>
 
         {/* Twinkling stars */}
@@ -258,7 +258,7 @@ function AdminSelfContent() {
       {/* Content - scrollable */}
       <div className="relative z-10 min-h-full flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0 pt-6 px-6 pb-4">
+        <div className="shrink-0 pt-6 px-6 pb-4">
           <Button variant="ghost" onClick={() => router.back()} className="text-white/80 hover:text-white mb-4">
             <ArrowLeft className="h-5 w-5 mr-2" />
             Back
@@ -273,8 +273,8 @@ function AdminSelfContent() {
         <div className="flex-1 flex flex-col items-center justify-start px-4 py-4">
           <div className="relative w-full max-w-md">
             {/* Animated rings */}
-            <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-indigo-500/30 animate-spin-slow blur-xl"></div>
-            <div className="absolute -inset-3 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 animate-pulse-ring blur-md"></div>
+            <div className="absolute -inset-6 rounded-full bg-linear-to-r from-purple-500/30 via-pink-500/30 to-indigo-500/30 animate-spin-slow blur-xl"></div>
+            <div className="absolute -inset-3 rounded-full bg-linear-to-r from-purple-500/20 to-pink-500/20 animate-pulse-ring blur-md"></div>
             
             {/* Selfie Capture Component - fully visible */}
             <div className="relative transform transition-all duration-500 hover:scale-105">
@@ -292,7 +292,7 @@ function AdminSelfContent() {
         </div>
 
         {/* Extra bottom padding for scrolling */}
-        <div className="flex-shrink-0 h-8"></div>
+        <div className="shrink-0 h-8"></div>
       </div>
 
       <style jsx>{`

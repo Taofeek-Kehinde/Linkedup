@@ -407,8 +407,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
               className="bg-black/95 backdrop-blur-lg border border-purple-500/50 rounded-2xl shadow-2xl p-4"
             >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+                <div className="shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center">
                     <Crown className="w-5 h-5 text-white" />
                   </div>
                 </div>
@@ -481,8 +481,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                 loading="lazy"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden">
-                <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-secondary">
+              <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden">
+                <div className="text-lg font-black text-transparent bg-clip-text bg-linear-to-r from-primary via-primary/80 to-secondary">
                   {currentUser.username.charAt(0).toUpperCase()}
                 </div>
               </div>

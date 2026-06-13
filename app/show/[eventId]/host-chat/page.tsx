@@ -357,14 +357,14 @@ setCurrentUser(currentUserData)
 
   if (isLoading || !event || !hostUser || !currentUser) {
     return (
-      <main className="h-dvh flex items-center justify-center bg-gradient-to-br from-black to-gray-900">
+      <main className="h-dvh flex items-center justify-center bg-linear-to-br from-black to-gray-900">
         <Spinner className="w-8 h-8" />
       </main>
     )
   }
 
   return (
-    <main className="h-dvh flex flex-col bg-gradient-to-br from-gray-900 to-black">
+    <main className="h-dvh flex flex-col bg-linear-to-br from-gray-900 to-black">
       <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <div className="flex items-center gap-3 p-4">
           <Button
@@ -391,7 +391,7 @@ setCurrentUser(currentUserData)
               const selfieUrl = (hostUser?.selfie_url || event?.host_selfie_url || '').trim()
               const showFallback = failedHostSelfie || selfieUrl.length === 0
               return showFallback ? (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center ring-2 ring-purple-500">
+                <div className="w-12 h-12 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center ring-2 ring-purple-500">
                   <Crown className="w-6 h-6 text-white" />
                 </div>
               ) : (
@@ -486,7 +486,7 @@ setCurrentUser(currentUserData)
                       <p className="text-sm font-semibold truncate">
                         Reported: {report.reported?.username || 'Unknown user'}
                       </p>
-                      <p className="text-sm text-white/80 break-words mt-1">{report.reason}</p>
+                      <p className="text-sm text-white/80 wrap-break-word mt-1">{report.reason}</p>
                       <p className="text-[10px] text-white/40 mt-1">{formatTime(report.created_at)}</p>
                     </div>
                   </div>
@@ -497,7 +497,7 @@ setCurrentUser(currentUserData)
 
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 flex items-center justify-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-linear-to-r from-purple-600/20 to-pink-600/20 flex items-center justify-center mb-4">
                 <MessageCircle className="w-10 h-10 text-purple-400" />
               </div>
               <h3 className="text-white font-semibold mb-2">No messages yet</h3>
@@ -517,7 +517,7 @@ setCurrentUser(currentUserData)
                   <div
                     className={`max-w-[90%] rounded-2xl px-4 py-2 ${
                       isCurrentUser
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                        ? 'bg-linear-to-r from-purple-600 to-pink-600 text-white'
                         : isReport
                           ? 'bg-red-500/10 border border-red-500/30 text-white'
                           : 'bg-white/10 text-white'
@@ -545,12 +545,12 @@ setCurrentUser(currentUserData)
                           <p className="text-sm font-semibold truncate">
                             Reported: {reportedUser?.username || 'Unknown user'}
                           </p>
-                          <p className="text-sm break-words mt-1">{reason}</p>
+                          <p className="text-sm wrap-break-word mt-1">{reason}</p>
                           <p className="text-[10px] mt-1 text-white/40">{formatTime(msg.created_at)}</p>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm break-words">{msg.content}</p>
+                      <p className="text-sm wrap-break-word">{msg.content}</p>
                     )}
                     {!isReport && (
                       <p
@@ -613,7 +613,7 @@ setCurrentUser(currentUserData)
           <Button
             onClick={sendMessage}
             disabled={!newMessage.trim() || isSending}
-            className="rounded-full w-10 h-10 p-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg"
+            className="rounded-full w-10 h-10 p-0 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg"
           >
             {isSending ? <Spinner className="w-4 h-4" /> : <Send className="w-4 h-4" />}
           </Button>

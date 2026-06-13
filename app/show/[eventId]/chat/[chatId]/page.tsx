@@ -737,7 +737,7 @@ mediaRecorder.onstop = async () => {
 
       {/* Stylish blocked popup */}
       {blockedPopupOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md shadow-2xl">
             <div className="p-5 border-b border-white/10">
               <p className="text-sm font-semibold text-white/80">Conversation</p>
@@ -752,7 +752,7 @@ mediaRecorder.onstop = async () => {
                   setBlockedPopupOpen(false)
                   router.push(`/show/${eventId}`)
                 }}
-                className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
+                className="rounded-full bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white"
               >
                 Back to chat list
               </Button>
@@ -764,7 +764,7 @@ mediaRecorder.onstop = async () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-lg">
         {event && timeRemaining && (
-          <div className="w-full p-3 bg-gradient-to-r from-primary/20 to-primary/10 border-b border-primary/30">
+          <div className="w-full p-3 bg-linear-to-r from-primary/20 to-primary/10 border-b border-primary/30">
             <div className="flex items-center justify-center gap-2 font-mono font-bold text-lg">
               <Clock className="h-5 w-5" />
               <span>{timeRemaining}</span>
@@ -919,7 +919,7 @@ mediaRecorder.onstop = async () => {
                       src={message.content}
                       controls
                       playsInline
-                      className="max-w-full rounded-lg max-h-[300px]"
+                      className="max-w-full rounded-lg max-h-75"
                     />
                   )}
 
@@ -933,7 +933,7 @@ mediaRecorder.onstop = async () => {
                   )}
 
                   {messageType === 'text' && (
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap wrap-break-word">{message.content}</p>
                   )}
 
                   <p className={`text-xs mt-1 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
