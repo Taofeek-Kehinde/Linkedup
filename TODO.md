@@ -1,5 +1,8 @@
 # TODO
 
-- [x] Update `app/admin-self/page.tsx` to auto-check if the host selfie is already saved for the given `eventId` and redirect to `/admin/event/${eventId}/host-setup` (skipping selfie capture) on subsequent visits.
-
+- [ ] Add host-side realtime subscription + UI for `reports` (event-wide)
+- [ ] Query `reports` rows joined with reporter profile from `event_users`
+- [ ] Show reporter username/selfie + reported user + reason + timestamp
+- [ ] Verify types and column names
+- [ ] Run `npm test` / `npm run lint` / `npm run build` if available
 

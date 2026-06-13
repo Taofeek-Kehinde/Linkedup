@@ -430,17 +430,68 @@ function cancelReply() {
 
    async function reportUser() {
      if (!partner || !reportReason.trim() || !chat || isProcessingAction) return
-     
+
      setIsProcessingAction(true)
      const supabase = createClient()
-     
-     await supabase.from('reports').insert({
+
+     const { error: reportError } = await supabase.from('reports').insert({
        event_id: eventId,
        reporter_id: session?.eventUserId,
        reported_id: partner.id,
        reason: reportReason,
      })
-     
+
+     if (!reportError && session) {
+       const { data: hostData } = await supabase
+         .from('event_users')
+         .select('id')
+         .eq('event_id', eventId)
+         .eq('username', 'HOST')
+         .single()
+
+       if (hostData) {
+         const { data: existingHostChat } = await supabase
+           .from('chats')
+           .select('id')
+           .eq('event_id', eventId)
+           .eq('is_active', true)
+           .or(
+             `and(user1_id.eq.${session.eventUserId},user2_id.eq.${hostData.id}),and(user1_id.eq.${hostData.id},user2_id.eq.${session.eventUserId})`
+           )
+           .single()
+
+         let hostChatId = existingHostChat?.id
+
+         if (!hostChatId) {
+           const { data: newHostChat } = await supabase
+             .from('chats')
+             .insert({
+               event_id: eventId,
+               user1_id: session.eventUserId,
+               user2_id: hostData.id,
+               is_active: true,
+             })
+             .select('id')
+             .single()
+
+           hostChatId = newHostChat?.id || null
+         }
+
+         if (hostChatId) {
+           await supabase.from('messages').insert({
+             chat_id: hostChatId,
+             sender_id: session.eventUserId,
+             content: JSON.stringify({
+               type: 'user_report',
+               reported_id: partner.id,
+               reason: reportReason.trim(),
+             }),
+             message_type: 'text',
+           })
+         }
+       }
+     }
+
      setShowReportDialog(false)
      setReportReason('')
      setIsProcessingAction(false)

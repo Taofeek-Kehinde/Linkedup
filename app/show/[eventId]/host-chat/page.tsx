@@ -6,10 +6,30 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Send, Crown, User, MessageCircle, LogOut } from 'lucide-react'
+import { ArrowLeft, Send, Crown, User, MessageCircle, Flag } from 'lucide-react'
+
 import Image from 'next/image'
 import type { Event, EventUser, Message, Chat } from '@/lib/types'
 import { ChatList } from '@/components/chat/chat-list'
+
+interface ReportMessagePayload {
+  type: 'user_report'
+  reported_id: string
+  reason: string
+}
+
+function parseReportMessage(content: string): ReportMessagePayload | null {
+  try {
+    const payload = JSON.parse(content)
+    if (payload?.type === 'user_report' && typeof payload.reported_id === 'string' && typeof payload.reason === 'string') {
+      return payload as ReportMessagePayload
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
 
 export default function HostChatPage({ params }: { params: Promise<{ eventId: string }> }) {
   const router = useRouter()
@@ -29,13 +49,51 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
 
   const [failedHostSelfie, setFailedHostSelfie] = useState(false)
   const [failedCurrentUserSelfie, setFailedCurrentUserSelfie] = useState(false)
+  const [reportedUsers, setReportedUsers] = useState<Record<string, EventUser>>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
-useEffect(() => {
+  type ReportRow = {
+    id: string
+    event_id: string
+    reporter_id: string
+    reported_id: string
+    reason: string
+    created_at: string
+    reporter?: EventUser | null
+    reported?: EventUser | null
+  }
+
+  const [reports, setReports] = useState<ReportRow[]>([])
+
+  async function loadReportedUsers(supabase: ReturnType<typeof createClient>, messagesToScan: Message[]) {
+    const reportedIds = Array.from(
+      new Set(
+        messagesToScan
+          .map((message) => parseReportMessage(message.content)?.reported_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+
+    if (reportedIds.length === 0) return
+
+    const { data } = await supabase
+      .from('event_users')
+      .select('*')
+      .in('id', reportedIds)
+
+    if (!data) return
+
+    setReportedUsers((prev) => ({
+      ...prev,
+      ...Object.fromEntries(data.map((user) => [user.id, user])),
+    }))
+  }
+
+ useEffect(() => {
     async function loadData() {
       const supabase = createClient()
 
@@ -160,7 +218,9 @@ setCurrentUser(currentUserData)
           .eq('chat_id', initialChat.id)
           .order('created_at', { ascending: true })
 
-        setMessages(messagesData || [])
+        const safeMessages = messagesData || []
+        setMessages(safeMessages)
+        await loadReportedUsers(supabase, safeMessages)
       } else {
         setChatId(null)
         setMessages([])
@@ -172,8 +232,65 @@ setCurrentUser(currentUserData)
     loadData()
   }, [eventId, router])
 
+  // Realtime: load/receive reports for the whole event
+  // NOTE: we DO NOT open a websocket channel here because your console shows
+  // `WebSocket is closed before the connection is established`.
+  // Instead, we poll the latest reports for the event every few seconds.
+  useEffect(() => {
+    let isMounted = true
+    const supabase = createClient()
+
+    async function fetchLatestReports() {
+      const { data } = await supabase
+        .from('reports')
+        .select('id,event_id,reporter_id,reported_id,reason,created_at')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (!isMounted) return
+
+      const base = (data || []) as Omit<ReportRow, 'reporter' | 'reported'>[]
+
+      const reporterIds = Array.from(new Set(base.map((r) => r.reporter_id)))
+      const reportedIds = Array.from(new Set(base.map((r) => r.reported_id)))
+
+      const { data: reporters } = await supabase
+        .from('event_users')
+        .select('id,username,selfie_url,vibe_key,session_token,is_upgraded,is_vip,is_active,last_seen,auth_user_id,location,created_at,event_id')
+        .in('id', reporterIds)
+
+      const { data: reportedUsersData } = await supabase
+        .from('event_users')
+        .select('id,username,selfie_url,vibe_key,session_token,is_upgraded,is_vip,is_active,last_seen,auth_user_id,location,created_at,event_id')
+        .in('id', reportedIds)
+
+      const reporterMap = new Map((reporters || []).map((u: any) => [u.id, u]))
+      const reportedMap = new Map((reportedUsersData || []).map((u: any) => [u.id, u]))
+
+      setReports(
+        base.map((r) => ({
+          ...r,
+          reporter: reporterMap.get(r.reporter_id) || null,
+          reported: reportedMap.get(r.reported_id) || null,
+        }))
+      )
+    }
+
+    fetchLatestReports()
+
+    const interval = setInterval(fetchLatestReports, 3000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [eventId])
+
+
   // Subscribe to new messages for selected chat
   useEffect(() => {
+
     if (!chatId) return
 
     const supabase = createClient()
@@ -189,7 +306,11 @@ setCurrentUser(currentUserData)
         },
         (payload) => {
           const newMsg = payload.new as Message
-          setMessages((prev) => [...prev, newMsg])
+          setMessages((prev) => {
+            if (prev.some((message) => message.id === newMsg.id)) return prev
+            return [...prev, newMsg]
+          })
+          loadReportedUsers(supabase, [newMsg])
         }
       )
       .subscribe()
@@ -337,12 +458,50 @@ setCurrentUser(currentUserData)
                 .select('*')
                 .eq('chat_id', selectedChatId)
                 .order('created_at', { ascending: true })
-              setMessages(messagesData || [])
+              const safeMessages = messagesData || []
+              setMessages(safeMessages)
+              await loadReportedUsers(supabase, safeMessages)
             }}
           />
         </div>
 
         <div className="overflow-y-auto p-2 space-y-3">
+          {reports.length > 0 && (
+            <div className="space-y-3">
+              {reports.slice(0, 5).map((report) => (
+                <div key={report.id} className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
+                  <div className="flex items-start gap-3">
+                    {(() => {
+                      const selfieUrl = (report.reported?.selfie_url || '').trim()
+                      const showFallback = !report.reported || selfieUrl.length === 0
+                      return showFallback ? (
+                        <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                          <User className="w-6 h-6 text-red-200" />
+                        </div>
+                      ) : (
+                        <img
+                          src={selfieUrl}
+                          alt={report.reported?.username || 'Unknown user'}
+                          className="w-12 h-12 rounded-full object-cover shrink-0"
+                        />
+                      )
+                    })()}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-red-200">
+                        Report from {report.reporter?.username || 'Unknown user'}
+                      </p>
+                      <p className="text-sm font-semibold truncate">
+                        Reported: {report.reported?.username || 'Unknown user'}
+                      </p>
+                      <p className="text-sm text-white/80 break-words mt-1">{report.reason}</p>
+                      <p className="text-[10px] text-white/40 mt-1">{formatTime(report.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 flex items-center justify-center mb-4">
@@ -353,24 +512,62 @@ setCurrentUser(currentUserData)
             </div>
           ) : (
             messages.map((msg) => {
-              const isCurrentUser = msg.sender_id === currentUser.id
+              const reportPayload = parseReportMessage(msg.content)
+              const isReport = Boolean(reportPayload)
+              const isCurrentUser = !isReport && msg.sender_id === currentUser.id
+              const reportedUser = reportPayload ? reportedUsers[reportPayload.reported_id] : null
+
+              const reason = reportPayload?.reason || 'No reason provided'
+
               return (
                 <div key={msg.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    className={`max-w-[90%] rounded-2xl px-4 py-2 ${
                       isCurrentUser
                         ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                        : 'bg-white/10 text-white'
+                        : isReport
+                          ? 'bg-red-500/10 border border-red-500/30 text-white'
+                          : 'bg-white/10 text-white'
                     }`}
                   >
-                    <p className="text-sm break-words">{msg.content}</p>
-                    <p
-                      className={`text-[10px] mt-1 ${
-                        isCurrentUser ? 'text-white/60' : 'text-white/40'
-                      }`}
-                    >
-                      {formatTime(msg.created_at)}
-                    </p>
+                    {isReport ? (
+                      <div className="flex items-start gap-3">
+                        {(() => {
+                          const selfieUrl = (reportedUser?.selfie_url || '').trim()
+                          const showFallback = !reportedUser || selfieUrl.length === 0
+                          return showFallback ? (
+                            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                              <User className="w-6 h-6 text-red-200" />
+                            </div>
+                          ) : (
+                            <img
+                              src={selfieUrl}
+                              alt={reportedUser.username}
+                              className="w-12 h-12 rounded-full object-cover shrink-0"
+                            />
+                          )
+                        })()}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-red-200">User report</p>
+                          <p className="text-sm font-semibold truncate">
+                            Reported: {reportedUser?.username || 'Unknown user'}
+                          </p>
+                          <p className="text-sm break-words mt-1">{reason}</p>
+                          <p className="text-[10px] mt-1 text-white/40">{formatTime(msg.created_at)}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm break-words">{msg.content}</p>
+                    )}
+                    {!isReport && (
+                      <p
+                        className={`text-[10px] mt-1 ${
+                          isCurrentUser ? 'text-white/60' : 'text-white/40'
+                        }`}
+                      >
+                        {formatTime(msg.created_at)}
+                      </p>
+                    )}
                   </div>
                 </div>
               )
