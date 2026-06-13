@@ -417,20 +417,21 @@ setCurrentUser(currentUserData)
           </div>
 
           {/* Right side: current user */}
-          {/* Right side: go to host profile */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push(`/show/${eventId}`)}
-              className="text-white/70 hover:text-white hover:bg-white/10 rounded-full"
-              aria-label="Go to host profile"
-              title="Host profile"
-            >
-              {/* Team: use an icon that clearly indicates host/profile */}
-              <Crown className="h-5 w-5" />
-            </Button>
-          </div>
+          {/* Right side: go to host profile (commented out - to enable later) */}
+          {false && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push(`/show/${eventId}`)}
+                className="text-white/70 hover:text-white hover:bg-white/10 rounded-full"
+                aria-label="Go to host profile"
+                title="Host profile"
+              >
+                <Crown className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
