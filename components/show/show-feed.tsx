@@ -656,19 +656,24 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             )}
           </Button>
 
-          {/* Host/Admin button with icon + text */}
-          <Button
-            variant="outline"
-            className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
-            onClick={() => router.push(`/show/${event.id}/host-chat`)}
-            disabled={event.status !== 'live'}
-            title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
-          >
-            <Crown className="h-4 w-4" />
-            <div className="w-2" />
-            <span className="text-amber-300 font-bold text-[10px] leading-none">VIP</span>
+          <div className="flex items-center gap-3">
+            {/* Host/Admin button (crown only) */}
+            <Button
+              variant="outline"
+              className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
+              onClick={() => router.push(`/show/${event.id}/host-chat`)}
+              disabled={event.status !== 'live'}
+              title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
+            >
+              <Crown className="h-4 w-4" />
+            </Button>
 
-          </Button>
+            {/* VIP indicator (between message and users, but NOT inside same host button) */}
+            {showVip ? null : (
+              <span className="text-amber-300 font-bold text-[10px] leading-none">VIP</span>
+            )}
+          </div>
+
 
 
 
