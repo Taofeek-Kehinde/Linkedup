@@ -658,7 +658,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             )}
           </Button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 justify-end">
             {/* Host/Admin button (crown only) */}
             <Button
               variant="outline"
@@ -670,12 +670,14 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
               <Crown className="h-4 w-4" />
             </Button>
 
-            {/* VIP indicator (between message and users, but NOT inside same host button) */}
-            {!showLocations && !showChats && (
-              <span className="text-amber-300 font-bold text-[10px] leading-none">VIP</span>
-            )}
-
+            {/* VIP indicator far from crown, aligned to the far right */}
+            <div className="flex items-center pl-4 border-l border-white/10">
+              {!showLocations && !showChats && (
+                <span className="text-amber-300 font-bold text-[10px] leading-none whitespace-nowrap">VIP</span>
+              )}
+            </div>
           </div>
+
 
 
 
