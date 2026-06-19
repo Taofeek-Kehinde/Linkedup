@@ -144,11 +144,19 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   const loadVipUsers = useCallback(async () => {
     const supabase = createClient()
-    const { data } = await supabase
+
+    const vipQuery = supabase
       .from('event_users')
       .select('*')
       .eq('event_id', event.id)
       .eq('is_vip', true)
+
+    // Show VIPs only for the attendee's current location (if applicable)
+    if (currentUser.location) {
+      vipQuery.eq('location', currentUser.location)
+    }
+
+    const { data } = await vipQuery
 
     const { data: blockedRelations } = await supabase
       .from('blocked_users')
@@ -163,7 +171,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     })
 
     setVipUsers((data || []).filter((vip) => !hiddenIds.has(vip.id)))
-  }, [event.id, currentUser.id])
+  }, [event.id, currentUser.id, currentUser.location])
 
   // Host user lookup
   useEffect(() => {
@@ -452,10 +460,10 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
               */}
 
 
-              {event.locations && event.locations.length > 1 && (
+          {event.locations && event.locations.length > 1 && (
                 <Button
                   variant="secondary"
-                  className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full"
+                  className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full cursor-pointer border border-primary/30"
                   onClick={() => setShowLocations(true)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
@@ -643,6 +651,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             <span className="text-sm font-medium text-foreground">{userCount} here</span>
           </div>
 
+
           <Button
             variant={showChats ? 'secondary' : 'ghost'}
             size="icon"
@@ -670,12 +679,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
               <Crown className="h-4 w-4" />
             </Button>
 
-            {/* VIP indicator far from crown, aligned to the far right */}
-            <div className="flex items-center pl-4 border-l border-white/10">
-              {!showLocations && !showChats && (
-                <span className="text-amber-300 font-bold text-[10px] leading-none whitespace-nowrap">VIP</span>
-              )}
-            </div>
+
           </div>
 
 
