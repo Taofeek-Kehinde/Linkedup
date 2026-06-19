@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+function sanitizeSupabaseUrl(url?: string): string {
+  if (!url) return ''
+  // Render/Vercel sometimes differ; ensure we don't include a /rest/v1 suffix.
+  return url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -25,30 +31,18 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseUrl = sanitizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+    if (!supabaseUrl) {
+      return NextResponse.json({ error: 'NEXT_PUBLIC_SUPABASE_URL is missing' }, { status: 500 })
+    }
     if (!supabaseServiceKey) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is required for uploads' }, { status: 500 })
     }
 
-    // Logs to debug 500 "Invalid API key"
-    // Debug env values actually present at runtime
-    console.log('[upload] supabaseUrl host', new URL(supabaseUrl).host)
-    console.log('[upload] has SUPABASE_SERVICE_ROLE_KEY', Boolean(supabaseServiceKey))
-    console.log('[upload] has NEXT_PUBLIC_SUPABASE_ANON_KEY', Boolean(supabaseAnonKey))
-    console.log(
-      '[upload] key prefix service',
-      supabaseServiceKey ? supabaseServiceKey.slice(0, 18) : 'none'
-    )
-    console.log(
-      '[upload] key prefix anon',
-      supabaseAnonKey ? supabaseAnonKey.slice(0, 18) : 'none'
-    )
-    console.log('[upload] using key:', supabaseServiceKey ? 'service_role' : 'anon')
-
-    // Storage upload should use the service role key so Vercel uploads are not blocked by RLS.
+    // If this fails with "Invalid Compact JWS", it usually means the provided key
+    // is not actually a Supabase service role JWT (wrong env var / truncated / quoting issues).
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
@@ -56,7 +50,7 @@ export async function POST(request: NextRequest) {
     const { error: uploadError } = await supabase.storage
       .from('selfies')
       .upload(filename, buffer, {
-        contentType: file.type,
+        contentType: file.type || 'image/jpeg',
         upsert: true,
       })
 
@@ -82,4 +76,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 
