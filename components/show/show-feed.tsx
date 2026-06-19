@@ -664,9 +664,11 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             disabled={event.status !== 'live'}
             title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
           >
-            <UserIcon className="h-4 w-4 mr-2" />
             <Crown className="h-4 w-4" />
+            <div className="w-2" />
+            <Crown className="h-4 w-4 text-amber-300" />
           </Button>
+
 
 
           <Button variant="ghost" size="icon" onClick={handleLeave}>
