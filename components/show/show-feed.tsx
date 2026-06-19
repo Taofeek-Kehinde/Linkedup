@@ -58,7 +58,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
   const notificationPermissionRef = useState(notificationPermission)[0]
 
-  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([])
+  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([]) // always keep latest only
+
 
   const handleLeave = () => {
     clearLocalSession()
@@ -233,11 +234,11 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     loadVipUsers()
   }, [showVip, loadVipUsers])
 
-  // Real-time broadcast messages (admin -> all attendees)
+  // Real-time broadcast message (admin -> all attendees). Keep only latest.
   const broadcastMsgIdsRef = useRef<Set<string>>(new Set())
 
-  // Real-time broadcast messages (admin -> all attendees)
   useEffect(() => {
+
     const supabase = createClient()
 
     // Debug: helps verify subscription is running for all attendees.
@@ -286,7 +287,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           created_at: m.created_at,
         })) as BroadcastMessage[]
 
-        setBroadcastMessages(next)
+        setBroadcastMessages(next.slice(-1))
+
       } catch {
         // ignore
       }
@@ -333,8 +335,9 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           }
 
           setBroadcastMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev
-            return [...prev, nextMsg].slice(-50)
+            // Replace previous message so only ONE is visible at a time
+            if (prev.length === 1 && prev[0]?.id === msg.id) return prev
+            return [nextMsg]
           })
         }
       )

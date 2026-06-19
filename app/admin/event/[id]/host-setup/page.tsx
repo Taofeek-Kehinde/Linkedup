@@ -167,6 +167,17 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
 
       if (!hostEventUser) throw new Error('Could not create host user')
 
+      // Keep only ONE latest broadcast message per event
+      const { error: deleteError } = await supabase
+        .from('broadcast_messages')
+        .delete()
+        .eq('event_id', event.id)
+
+      if (deleteError) {
+        console.error('Error deleting old broadcast messages:', deleteError)
+        // do not block sending
+      }
+
       const { error: insertError } = await supabase
         .from('broadcast_messages')
         .insert({
