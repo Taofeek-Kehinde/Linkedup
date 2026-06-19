@@ -45,6 +45,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   const [showVip, setShowVip] = useState(false)
   const [vipUsers, setVipUsers] = useState<EventUser[]>([])
 
+
+
   const [hostUser, setHostUser] = useState<EventUser | null>(null)
 
   const [timeRemaining, setTimeRemaining] = useState<string>('')
@@ -669,9 +671,10 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             </Button>
 
             {/* VIP indicator (between message and users, but NOT inside same host button) */}
-            {showVip ? null : (
+            {!showLocations && !showChats && (
               <span className="text-amber-300 font-bold text-[10px] leading-none">VIP</span>
             )}
+
           </div>
 
 
