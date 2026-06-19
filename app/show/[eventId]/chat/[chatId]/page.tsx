@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Clock, Mic, Video, X, Square, Send, ArrowLeft, User, Sticker, MoreVertical } from 'lucide-react'
+import { Clock, Mic, Video, X, Square, Send, ArrowLeft, User, Sticker, MoreVertical, Crown } from 'lucide-react'
 import type { Chat, EventUser, Message, UserSession, Event } from '@/lib/types'
 import {
   DropdownMenu,
@@ -58,6 +58,10 @@ export default function ChatPage() {
   const [showBlockDialog, setShowBlockDialog] = useState(false)
   const [reportReason, setReportReason] = useState('')
   const [isProcessingAction, setIsProcessingAction] = useState(false)
+
+  // Latest broadcast popup (admin -> all attendees). Keep only one.
+  const [broadcastMsg, setBroadcastMsg] = useState<{ id: string; content: string; sender_name: string; created_at: string } | null>(null)
+
 
   const [blockedPopupOpen, setBlockedPopupOpen] = useState(false)
   const [blockedPopupText, setBlockedPopupText] = useState('')
@@ -170,9 +174,98 @@ if (!chatData) {
     loadData()
   }, [eventId, chatId, router])
 
+  // Real-time broadcast popup (admin -> all attendees). Keep only latest.
+  useEffect(() => {
+    if (!eventId) return
+
+    const supabase = createClient()
+    let mounted = true
+
+    async function loadExistingLatest() {
+      try {
+        const { data } = await supabase
+          .from('broadcast_messages')
+          .select('id, content, sender_id, created_at')
+          .eq('event_id', eventId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        const msg = (data && data[0]) as any
+        if (!msg || !mounted) return
+
+        let sender_name = 'ADMIN'
+        if (msg.sender_id) {
+          const { data: sender } = await supabase
+            .from('event_users')
+            .select('username')
+            .eq('event_id', eventId)
+            .eq('id', msg.sender_id)
+            .single()
+          if (sender?.username) sender_name = sender.username
+        }
+
+        setBroadcastMsg({
+          id: msg.id,
+          content: msg.content,
+          sender_name,
+          created_at: msg.created_at,
+        })
+      } catch {
+        // ignore
+      }
+    }
+
+    loadExistingLatest()
+
+    const channel = supabase
+      .channel(`event-${eventId}-broadcast-chat-${chatId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'broadcast_messages',
+          filter: `event_id=eq.${eventId}`,
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          if (!msg?.id) return
+
+          let sender_name = 'ADMIN'
+          try {
+            if (msg.sender_id) {
+              const { data: sender } = await supabase
+                .from('event_users')
+                .select('username')
+                .eq('event_id', eventId)
+                .eq('id', msg.sender_id)
+                .single()
+              if (sender?.username) sender_name = sender.username
+            }
+          } catch {
+            // ignore
+          }
+
+          setBroadcastMsg({
+            id: msg.id,
+            content: msg.content,
+            sender_name,
+            created_at: msg.created_at,
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [eventId, chatId])
+
   // Real-time subscription for new messages
   useEffect(() => {
     if (!chat) return
+
 
     const supabase = createClient()
     const channel = supabase
@@ -712,8 +805,34 @@ mediaRecorder.onstop = async () => {
 
   return (
     <main className="min-h-dvh flex flex-col bg-background">
+      {/* Broadcast popup */}
+      {broadcastMsg && (
+        <div className="fixed top-20 right-4 left-4 md:right-auto md:left-auto md:max-w-sm z-50">
+          <div className="bg-black/95 backdrop-blur-lg border border-purple-500/50 rounded-2xl shadow-2xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0">
+                <div className="w-10 h-10 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-purple-400 font-bold text-sm">{broadcastMsg.sender_name}</p>
+                  <p className="text-white/40 text-xs">{new Date(broadcastMsg.created_at).toLocaleTimeString()}</p>
+                </div>
+                <p className="text-white text-sm mt-1">{broadcastMsg.content}</p>
+              </div>
+              <button className="text-white/50 hover:text-white/80" onClick={() => setBroadcastMsg(null)}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recording Overlay (video preview) */}
 {isRecording && recordingType === 'video' && (
+
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center">
           <div className="relative w-[320px] max-w-[90vw]">
             <video
