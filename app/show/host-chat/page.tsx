@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
 
 /**
- * Redirect shim.
+ * Redirect shim.f
  * The real host chat UI is at: /show/[eventId]/host-chat
  *
  * This prevents the generic /show/host-chat route from exposing other chat screens.

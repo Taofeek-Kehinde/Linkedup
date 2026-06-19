@@ -665,8 +665,9 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
           >
             <UserIcon className="h-4 w-4 mr-2" />
-            {hostUser ? `Host: ${hostUser.username}` : 'Host'}
+            <Crown className="h-4 w-4" />
           </Button>
+
 
           <Button variant="ghost" size="icon" onClick={handleLeave}>
             <LogOut className="h-5 w-5" />
