@@ -418,8 +418,11 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
                 <h2 className="font-semibold text-white">{hostUser.username}</h2>
                 <Crown className="w-4 h-4 text-yellow-500" />
               </div>
-              <p className="text-xs text-white/60">Host • Online</p>
+              <div className="text-white/70 flex items-center justify-center">
+                <Crown className="w-4 h-4 text-yellow-500" />
+              </div>
             </div>
+
           </div>
 
           <div className="hidden md:flex items-center gap-2 min-w-[220px] justify-end">
