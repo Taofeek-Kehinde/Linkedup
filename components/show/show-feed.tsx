@@ -665,9 +665,10 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
           >
             <Crown className="h-4 w-4" />
-            <div className="w-2" />
-            <Crown className="h-4 w-4 text-amber-300" />
+            <div className="w-3" />
+            <span className="text-amber-300 font-bold text-[10px] leading-none">VIP</span>
           </Button>
+
 
 
 
