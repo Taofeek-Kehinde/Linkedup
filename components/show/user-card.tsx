@@ -17,7 +17,27 @@ interface SelfieImageProps {
 export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieImageProps) {
   const [imageFailed, setImageFailed] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
-  const selfieUrl = (src || '').trim()
+
+  const raw = (src || '').trim()
+
+  // Render/Supabase robustness:
+  // - If src is already an absolute URL => use it.
+  // - If src looks like a Supabase storage path (e.g. "selfies/<...>/<file>.jpg"),
+  //   convert it to a public URL using NEXT_PUBLIC_SUPABASE_URL.
+  const selfieUrl = (() => {
+    if (!raw) return ''
+    if (/^https?:\/\//i.test(raw)) return raw
+
+    // normalize: allow both with and without leading slash
+    const path = raw.startsWith('/') ? raw.slice(1) : raw
+    if (!path.startsWith('selfies/')) return raw
+
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+    if (!supabaseUrl) return raw
+
+    // prevent duplicated slashes
+    return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${path}`
+  })()
 
   useEffect(() => {
     setImageFailed(false)
@@ -25,11 +45,18 @@ export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieIm
   }, [selfieUrl])
 
   const showFallback = imageFailed || selfieUrl.length === 0
-  const retryUrl = selfieUrl ? `${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}` : ''
+  const retryUrl = selfieUrl
+    ? `${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}`
+    : ''
 
   if (showFallback) {
     return (
-      <div className={fallbackClassName || 'w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10'}>
+      <div
+        className={
+          fallbackClassName ||
+          'w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10'
+        }
+      >
         <User className="h-10 w-10 text-muted-foreground" />
       </div>
     )
