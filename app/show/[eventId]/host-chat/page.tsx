@@ -1,16 +1,14 @@
 'use client'
 
-import { use } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import type { Event, EventUser, Message } from '@/lib/types'
+
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Send, Crown, User, MessageCircle, Flag } from 'lucide-react'
-
-import Image from 'next/image'
-import type { Event, EventUser, Message, Chat } from '@/lib/types'
-import { ChatList } from '@/components/chat/chat-list'
+import { ArrowLeft, Crown, MessageCircle, Send, User, X } from 'lucide-react'
 
 interface ReportMessagePayload {
   type: 'user_report'
@@ -21,59 +19,74 @@ interface ReportMessagePayload {
 function parseReportMessage(content: string): ReportMessagePayload | null {
   try {
     const payload = JSON.parse(content)
-    if (payload?.type === 'user_report' && typeof payload.reported_id === 'string' && typeof payload.reason === 'string') {
+    if (
+      payload?.type === 'user_report' &&
+      typeof payload.reported_id === 'string' &&
+      typeof payload.reason === 'string'
+    ) {
       return payload as ReportMessagePayload
     }
   } catch {
-    return null
+    // ignore
   }
-
   return null
+}
+
+type ReportRow = {
+  id: string
+  event_id: string
+  reporter_id: string
+  reported_id: string
+  reason: string
+  created_at: string
+  reporter?: EventUser | null
+  reported?: EventUser | null
 }
 
 export default function HostChatPage({ params }: { params: Promise<{ eventId: string }> }) {
   const router = useRouter()
-  const { eventId } = use(params)
+  const { eventId } = (require('react') as typeof import('react')).use(params)
+
+  const supabase = useMemo(() => createClient(), [])
 
   const [event, setEvent] = useState<Event | null>(null)
-  const [hostUser, setHostUser] = useState<EventUser | null>(null)
   const [currentUser, setCurrentUser] = useState<EventUser | null>(null)
+  const [hostUser, setHostUser] = useState<EventUser | null>(null)
 
+  // ALL attendee profiles for left sidebar (excluding hostUser)
+  const [hostAllUsers, setHostAllUsers] = useState<EventUser[]>([])
+
+  // Selected attendee
+  const [targetUserId, setTargetUserId] = useState<string | null>(null)
+
+  // Selected chatId between hostUser and targetUserId
   const [chatId, setChatId] = useState<string | null>(null)
-  const [hostChats, setHostChats] = useState<Chat[]>([])
 
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
 
-  const [failedHostSelfie, setFailedHostSelfie] = useState(false)
-  const [failedCurrentUserSelfie, setFailedCurrentUserSelfie] = useState(false)
-  const [reportedUsers, setReportedUsers] = useState<Record<string, EventUser>>({})
-
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const [isTyping, setIsTyping] = useState(false)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
-
-  type ReportRow = {
-    id: string
-    event_id: string
-    reporter_id: string
-    reported_id: string
-    reason: string
-    created_at: string
-    reporter?: EventUser | null
-    reported?: EventUser | null
-  }
-
+  const [reportedUsers, setReportedUsers] = useState<Record<string, EventUser>>({})
   const [reports, setReports] = useState<ReportRow[]>([])
 
-  async function loadReportedUsers(supabase: ReturnType<typeof createClient>, messagesToScan: Message[]) {
+  const [failedHostSelfie, setFailedHostSelfie] = useState(false)
+  const [failedTargetSelfie, setFailedTargetSelfie] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  function formatTime(timestamp: string) {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  async function loadReportedUsers(messagesToScan: Message[]) {
     const reportedIds = Array.from(
       new Set(
         messagesToScan
-          .map((message) => parseReportMessage(message.content)?.reported_id)
+          .map((m) => parseReportMessage(m.content)?.reported_id)
           .filter((id): id is string => Boolean(id))
       )
     )
@@ -89,156 +102,162 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
 
     setReportedUsers((prev) => ({
       ...prev,
-      ...Object.fromEntries(data.map((user) => [user.id, user])),
+      ...Object.fromEntries(data.map((u) => [u.id, u]))
     }))
   }
 
- useEffect(() => {
+  async function ensureChatForPair(userAId: string, userBId: string): Promise<string | null> {
+    const { data: existingChat } = await supabase
+      .from('chats')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('is_active', true)
+      .or(
+        `and(user1_id.eq.${userAId},user2_id.eq.${userBId}),and(user1_id.eq.${userBId},user2_id.eq.${userAId})`
+      )
+      .single()
+
+    if (existingChat?.id) return existingChat.id
+
+    const { data: newChat } = await supabase
+      .from('chats')
+      .insert({
+        event_id: eventId,
+        user1_id: userAId,
+        user2_id: userBId,
+        is_active: true
+      })
+      .select('id')
+      .single()
+
+    return newChat?.id ?? null
+  }
+
+  async function openChatWithTarget(nextTargetUserId: string) {
+    if (!hostUser || !currentUser) return
+
+    const nextChatId = await ensureChatForPair(hostUser.id, nextTargetUserId)
+    if (!nextChatId) return
+
+    setTargetUserId(nextTargetUserId)
+    setChatId(nextChatId)
+
+    const { data: messagesData } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', nextChatId)
+      .order('created_at', { ascending: true })
+
+    const safeMessages = messagesData || []
+    setMessages(safeMessages)
+    setReportedUsers({})
+    await loadReportedUsers(safeMessages)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
     async function loadData() {
-      const supabase = createClient()
+      setIsLoading(true)
 
       const sessionStr = localStorage.getItem('linkedup_session')
-      let currentUserData: EventUser | null = null
-
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr)
-          // First try to find user by id from session
-          const { data } = await supabase
-            .from('event_users')
-            .select('*')
-            .eq('id', session.eventUserId)
-            .single()
-          currentUserData = data
-        } catch {
-          currentUserData = null
-        }
-      }
-
-      // If user not found by id, try sessionToken (for session consistency)
-      if (!currentUserData && sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr)
-          const { data: tokenUser } = await supabase
-            .from('event_users')
-            .select('*')
-            .eq('event_id', eventId)
-            .eq('session_token', session.sessionToken)
-            .single()
-          currentUserData = tokenUser
-        } catch {
-          currentUserData = null
-        }
-      }
-
-      // Last resort: try Supabase auth user (for authenticated hosts)
-      if (!currentUserData) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          // NOTE: this call can fail with 406 if RLS/policies reject the request.
-          // In that case we should not redirect/logout; we just stop initialization.
-          try {
-            const { data: authUser } = await supabase
-              .from('event_users')
-              .select('*')
-              .eq('event_id', eventId)
-              .eq('auth_user_id', user.id)
-              .single()
-            currentUserData = authUser
-          } catch {
-            currentUserData = null
-          }
-        }
-      }
-
-      if (!currentUserData) {
-        // Keep user on host chat page; the app will render loader.
-        // Redirecting to /join is what *looks like a logout*.
-        setIsLoading(true)
+      if (!sessionStr) {
+        router.push('/join')
         return
       }
-setCurrentUser(currentUserData)
 
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', eventId)
-        .single()
+      try {
+        const session = JSON.parse(sessionStr)
 
-      if (!eventData) {
-        router.push('/')
-        return
-      }
-      setEvent(eventData)
+        const { data: currentUserData } = await supabase
+          .from('event_users')
+          .select('*')
+          .eq('id', session.eventUserId)
+          .single()
 
-      // Find host user - if currentUser is the host, use them
-      let hostData: EventUser | null = null
+        if (cancelled) return
+        if (!currentUserData) {
+          router.push('/join')
+          return
+        }
+        setCurrentUser(currentUserData)
 
-      // Check if currentUser is the host (username='HOST')
-      if (currentUserData.username === 'HOST') {
-        hostData = currentUserData
-      } else {
-        // Find host user by username='HOST' fallback
-        const { data: hostUsernameData } = await supabase
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .single()
+
+        if (cancelled) return
+        if (!eventData) {
+          router.push('/')
+          return
+        }
+        setEvent(eventData)
+
+        const { data: hostRow } = await supabase
           .from('event_users')
           .select('*')
           .eq('event_id', eventId)
           .eq('username', 'HOST')
           .single()
 
-        hostData = hostUsernameData
-      }
+        if (cancelled) return
+        if (!hostRow) {
+          router.push('/')
+          return
+        }
+        setHostUser(hostRow)
 
-      if (!hostData) {
-        router.push('/')
-        return
-      }
-
-      setHostUser(hostData)
-
-      // Load all active chats that include the host
-      const { data: chats } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('is_active', true)
-        .or(`user1_id.eq.${hostData.id},user2_id.eq.${hostData.id}`)
-        .order('created_at', { ascending: false })
-
-      const safeChats = (chats || []) as Chat[]
-      setHostChats(safeChats)
-
-      const initialChat = safeChats[0] || null
-      if (initialChat?.id) {
-        setChatId(initialChat.id)
-
-        const { data: messagesData } = await supabase
-          .from('messages')
+        const { data: usersData } = await supabase
+          .from('event_users')
           .select('*')
-          .eq('chat_id', initialChat.id)
+          .eq('event_id', eventId)
+          .neq('id', hostRow.id)
           .order('created_at', { ascending: true })
 
-        const safeMessages = messagesData || []
-        setMessages(safeMessages)
-        await loadReportedUsers(supabase, safeMessages)
-      } else {
-        setChatId(null)
-        setMessages([])
-      }
+        if (cancelled) return
+        const attendees = (usersData || []) as EventUser[]
+        setHostAllUsers(attendees)
 
-      setIsLoading(false)
+        const initialTarget = attendees[0]?.id ?? null
+        setTargetUserId(initialTarget)
+
+        if (initialTarget) {
+          const initialChatId = await ensureChatForPair(hostRow.id, initialTarget)
+          if (cancelled) return
+
+          if (initialChatId) {
+            setChatId(initialChatId)
+            const { data: messagesData } = await supabase
+              .from('messages')
+              .select('*')
+              .eq('chat_id', initialChatId)
+              .order('created_at', { ascending: true })
+
+            const safeMessages = messagesData || []
+            setMessages(safeMessages)
+            await loadReportedUsers(safeMessages)
+          }
+        }
+      } catch {
+        if (!cancelled) router.push('/')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
     }
 
     loadData()
-  }, [eventId, router])
+    return () => {
+      cancelled = true
+    }
+  }, [eventId, router, supabase])
 
-  // Realtime: load/receive reports for the whole event
-  // NOTE: we DO NOT open a websocket channel here because your console shows
-  // `WebSocket is closed before the connection is established`.
-  // Instead, we poll the latest reports for the event every few seconds.
+  // Poll reports
   useEffect(() => {
+    if (!eventId) return
+
     let isMounted = true
-    const supabase = createClient()
 
     async function fetchLatestReports() {
       const { data } = await supabase
@@ -251,7 +270,6 @@ setCurrentUser(currentUserData)
       if (!isMounted) return
 
       const base = (data || []) as Omit<ReportRow, 'reporter' | 'reported'>[]
-
       const reporterIds = Array.from(new Set(base.map((r) => r.reporter_id)))
       const reportedIds = Array.from(new Set(base.map((r) => r.reported_id)))
 
@@ -272,30 +290,26 @@ setCurrentUser(currentUserData)
         base.map((r) => ({
           ...r,
           reporter: reporterMap.get(r.reporter_id) || null,
-          reported: reportedMap.get(r.reported_id) || null,
+          reported: reportedMap.get(r.reported_id) || null
         }))
       )
     }
 
     fetchLatestReports()
-
     const interval = setInterval(fetchLatestReports, 3000)
 
     return () => {
       isMounted = false
       clearInterval(interval)
     }
-  }, [eventId])
+  }, [eventId, supabase])
 
-
-  // Subscribe to new messages for selected chat
+  // Realtime messages ONLY for selected chat
   useEffect(() => {
-
     if (!chatId) return
 
-    const supabase = createClient()
     const channel = supabase
-      .channel(`chat-${chatId}`)
+      .channel(`host-chat-${chatId}`)
       .on(
         'postgres_changes',
         {
@@ -307,10 +321,10 @@ setCurrentUser(currentUserData)
         (payload) => {
           const newMsg = payload.new as Message
           setMessages((prev) => {
-            if (prev.some((message) => message.id === newMsg.id)) return prev
+            if (prev.some((m) => m.id === newMsg.id)) return prev
             return [...prev, newMsg]
           })
-          loadReportedUsers(supabase, [newMsg])
+          loadReportedUsers([newMsg])
         }
       )
       .subscribe()
@@ -318,42 +332,34 @@ setCurrentUser(currentUserData)
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [chatId])
+  }, [chatId, supabase])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || isSending || !chatId || !currentUser) return
-
-    setIsSending(true)
-    const supabase = createClient()
-
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        chat_id: chatId,
-        sender_id: currentUser.id,
-        content: newMessage.trim(),
-        message_type: 'text'
-      })
-
-    if (!error) setNewMessage('')
-
-    setIsSending(false)
-  }
-
-  const handleTyping = () => {
+  function handleTyping() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     if (!isTyping) setIsTyping(true)
     typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 1000)
   }
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  async function sendMessage() {
+    if (!newMessage.trim() || isSending || !chatId || !currentUser) return
+
+    setIsSending(true)
+    const { error } = await supabase.from('messages').insert({
+      chat_id: chatId,
+      sender_id: currentUser.id,
+      content: newMessage.trim(),
+      message_type: 'text'
+    })
+
+    if (!error) setNewMessage('')
+    setIsSending(false)
   }
+
+  const selectedTarget = hostAllUsers.find((u) => u.id === targetUserId) || null
 
   if (isLoading || !event || !hostUser || !currentUser) {
     return (
@@ -385,11 +391,11 @@ setCurrentUser(currentUserData)
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          {/* Centered Host Profile between the left (messages/back) and right (logout) areas */}
           <div className="flex items-center gap-2 flex-1 justify-center">
             {(() => {
               const selfieUrl = (hostUser?.selfie_url || event?.host_selfie_url || '').trim()
               const showFallback = failedHostSelfie || selfieUrl.length === 0
+
               return showFallback ? (
                 <div className="w-12 h-12 rounded-full bg-linear-to-r from-purple-600 to-pink-600 flex items-center justify-center ring-2 ring-purple-500">
                   <Crown className="w-6 h-6 text-white" />
@@ -416,50 +422,113 @@ setCurrentUser(currentUserData)
             </div>
           </div>
 
-          {/* Right side: current user */}
-          {/* Right side: go to host profile (commented out - to enable later) */}
-          {false && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push(`/show/${eventId}`)}
-                className="text-white/70 hover:text-white hover:bg-white/10 rounded-full"
-                aria-label="Go to host profile"
-                title="Host profile"
-              >
-                <Crown className="h-5 w-5" />
-              </Button>
-            </div>
-          )}
+          <div className="hidden md:flex items-center gap-2 min-w-[220px] justify-end">
+            {selectedTarget ? (
+              <div className="flex items-center gap-2">
+                <div className="relative w-9 h-9 rounded-full overflow-hidden ring-1 ring-white/15">
+                  {selectedTarget.selfie_url ? (
+                    <Image
+                      src={selectedTarget.selfie_url}
+                      alt={selectedTarget.username}
+                      fill
+                      className="object-cover"
+                      onError={() => setFailedTargetSelfie(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                      <User className="w-4 h-4 text-white/60" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">{selectedTarget.username}</p>
+                  <p className="text-[10px] text-white/50 truncate">
+                    {selectedTarget.is_active && !selectedTarget.last_seen
+                      ? 'Online'
+                      : selectedTarget.last_seen
+                        ? `Last seen ${new Date(selectedTarget.last_seen).toLocaleTimeString()}`
+                        : ''}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-white/50">Select a user</div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[360px_1fr] gap-4 p-4">
-        <div className="h-[calc(100vh-120px)] overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-          <ChatList
-            chats={hostChats}
-            currentUser={currentUser}
-            eventId={eventId}
-            event={event}
-            chatId={chatId}
-            onClose={() => router.push(`/admin/event/${eventId}/host-setup`)}
-            onChatSelect={async (selectedChatId) => {
-              setChatId(selectedChatId)
-              const supabase = createClient()
-              const { data: messagesData } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('chat_id', selectedChatId)
-                .order('created_at', { ascending: true })
-              const safeMessages = messagesData || []
-              setMessages(safeMessages)
-              await loadReportedUsers(supabase, safeMessages)
-            }}
-          />
-        </div>
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-[320px_1fr] gap-4 p-4">
+        {/* LEFT SIDEBAR */}
+        <aside className="h-[calc(100vh-120px)] overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <div className="h-full flex flex-col">
+            <div className="p-4 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">Users</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.push(`/admin/event/${eventId}/host-setup`)}
+                  className="text-white/70 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-xs text-white/50 mt-1">Pick a user to chat</p>
+            </div>
 
-        <div className="overflow-y-auto p-2 space-y-3">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {hostAllUsers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                  <Spinner className="w-6 h-6" />
+                  <p className="text-xs text-white/50 mt-2">Loading users...</p>
+                </div>
+              ) : (
+                hostAllUsers.map((u) => {
+                  const isActive = targetUserId === u.id
+                  const selfieUrl = (u.selfie_url || '').trim()
+
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => openChatWithTarget(u.id)}
+                      className={`w-full text-left rounded-xl p-2 border transition-colors ${
+                        isActive
+                          ? 'border-purple-500/60 bg-purple-500/10'
+                          : 'border-white/10 bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {selfieUrl ? (
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden ring-1 ring-white/15">
+                            <Image src={selfieUrl} alt={u.username} fill className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center ring-1 ring-white/15">
+                            <User className="w-5 h-5 text-white/60" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-white truncate">{u.username}</p>
+                          <p className="text-xs text-white/50 truncate">
+                            {u.is_active && !u.last_seen
+                              ? 'Online'
+                              : u.last_seen
+                                ? `Last seen ${new Date(u.last_seen).toLocaleTimeString()}`
+                                : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* CHAT AREA */}
+        <section className="overflow-y-auto p-2 space-y-3">
           {reports.length > 0 && (
             <div className="space-y-3">
               {reports.slice(0, 5).map((report) => (
@@ -468,6 +537,7 @@ setCurrentUser(currentUserData)
                     {(() => {
                       const selfieUrl = (report.reported?.selfie_url || '').trim()
                       const showFallback = !report.reported || selfieUrl.length === 0
+
                       return showFallback ? (
                         <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
                           <User className="w-6 h-6 text-red-200" />
@@ -502,7 +572,7 @@ setCurrentUser(currentUserData)
                 <MessageCircle className="w-10 h-10 text-purple-400" />
               </div>
               <h3 className="text-white font-semibold mb-2">No messages yet</h3>
-              <p className="text-white/50 text-sm">Start a conversation with the host</p>
+              <p className="text-white/50 text-sm">Pick a user to start chatting</p>
             </div>
           ) : (
             messages.map((msg) => {
@@ -510,7 +580,6 @@ setCurrentUser(currentUserData)
               const isReport = Boolean(reportPayload)
               const isCurrentUser = !isReport && msg.sender_id === currentUser.id
               const reportedUser = reportPayload ? reportedUsers[reportPayload.reported_id] : null
-
               const reason = reportPayload?.reason || 'No reason provided'
 
               return (
@@ -529,6 +598,7 @@ setCurrentUser(currentUserData)
                         {(() => {
                           const selfieUrl = (reportedUser?.selfie_url || '').trim()
                           const showFallback = !reportedUser || selfieUrl.length === 0
+
                           return showFallback ? (
                             <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
                               <User className="w-6 h-6 text-red-200" />
@@ -553,12 +623,9 @@ setCurrentUser(currentUserData)
                     ) : (
                       <p className="text-sm wrap-break-word">{msg.content}</p>
                     )}
+
                     {!isReport && (
-                      <p
-                        className={`text-[10px] mt-1 ${
-                          isCurrentUser ? 'text-white/60' : 'text-white/40'
-                        }`}
-                      >
+                      <p className={`text-[10px] mt-1 ${isCurrentUser ? 'text-white/60' : 'text-white/40'}`}>
                         {formatTime(msg.created_at)}
                       </p>
                     )}
@@ -572,25 +639,16 @@ setCurrentUser(currentUserData)
             <div className="flex justify-start">
               <div className="bg-white/10 rounded-2xl px-4 py-2">
                 <div className="flex gap-1">
-                  <span
-                    className="w-2 h-2 bg-white/60 rounded-full animate-bounce"
-                    style={{ animationDelay: '0ms' }}
-                  />
-                  <span
-                    className="w-2 h-2 bg-white/60 rounded-full animate-bounce"
-                    style={{ animationDelay: '150ms' }}
-                  />
-                  <span
-                    className="w-2 h-2 bg-white/60 rounded-full animate-bounce"
-                    style={{ animationDelay: '300ms' }}
-                  />
+                  <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             </div>
           )}
 
           <div ref={messagesEndRef} />
-        </div>
+        </section>
       </div>
 
       <div className="sticky bottom-0 bg-black/80 backdrop-blur-lg border-t border-white/10 p-4">
@@ -606,14 +664,14 @@ setCurrentUser(currentUserData)
               }
               handleTyping()
             }}
-            placeholder={`Message ${hostUser.username}...`}
+            placeholder={targetUserId ? `Message ${selectedTarget?.username || ''}...` : 'Select a user...'}
             className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-2 text-white placeholder-white/50 outline-none focus:border-purple-500 transition-colors"
-            disabled={isSending}
+            disabled={isSending || !chatId}
           />
 
           <Button
             onClick={sendMessage}
-            disabled={!newMessage.trim() || isSending}
+            disabled={!newMessage.trim() || isSending || !chatId}
             className="rounded-full w-10 h-10 p-0 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg"
           >
             {isSending ? <Spinner className="w-4 h-4" /> : <Send className="w-4 h-4" />}
