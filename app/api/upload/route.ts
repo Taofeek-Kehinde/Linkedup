@@ -28,6 +28,31 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}.jpg`
 
+    // Safety guards: selfies can crash/timeout servers if we buffer too much.
+    // User uploads are expected to be <= 10MB.
+    const maxBytes = 10 * 1024 * 1024 // 10MB
+    const contentType = file.type?.toLowerCase() || ''
+    const isAllowedType = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+    ].includes(contentType)
+
+    if (!isAllowedType) {
+      return NextResponse.json(
+        { error: 'Unsupported file type. Use JPG, PNG, or WEBP.' },
+        { status: 415 }
+      )
+    }
+
+    // `File.size` is bytes.
+    if (typeof file.size === 'number' && file.size > maxBytes) {
+      return NextResponse.json(
+        { error: 'File too large. Max size is 10MB.' },
+        { status: 413 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
@@ -35,8 +60,12 @@ export async function POST(request: NextRequest) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl) {
-      return NextResponse.json({ error: 'NEXT_PUBLIC_SUPABASE_URL is missing' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'NEXT_PUBLIC_SUPABASE_URL is missing' },
+        { status: 500 }
+      )
     }
+
     if (!supabaseServiceKey) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is required for uploads' }, { status: 500 })
     }
