@@ -4,7 +4,15 @@ import { createClient } from '@supabase/supabase-js'
 function sanitizeSupabaseUrl(url?: string): string {
   if (!url) return ''
   // Render/Vercel sometimes differ; ensure we don't include a /rest/v1 suffix.
-  return url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+  return url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+}
+
+function normalizeServiceRoleKey(key?: string): string {
+  return (key || '').trim().replace(/^["']|["']$/g, '')
+}
+
+function isServiceRoleJwt(key: string): boolean {
+  return /^eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key)
 }
 
 export async function POST(request: NextRequest) {
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     const supabaseUrl = sanitizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseServiceKey = normalizeServiceRoleKey(process.env.SUPABASE_SERVICE_ROLE_KEY)
 
     if (!supabaseUrl) {
       return NextResponse.json(
@@ -70,8 +78,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is required for uploads' }, { status: 500 })
     }
 
-    // If this fails with "Invalid Compact JWS", it usually means the provided key
-    // is not actually a Supabase service role JWT (wrong env var / truncated / quoting issues).
+    if (!isServiceRoleJwt(supabaseServiceKey)) {
+      return NextResponse.json(
+        { error: 'SUPABASE_SERVICE_ROLE_KEY is invalid. Set the full Supabase service role JWT in Render/Vercel env vars.' },
+        { status: 500 }
+      )
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
