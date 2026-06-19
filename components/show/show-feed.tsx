@@ -9,7 +9,7 @@ import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye, User as Use
 import Image from 'next/image'
 
 
-import { UserCard } from '@/components/show/user-card'
+import { UserCard, SelfieImage } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
 
 import type { Event, EventUser, UserSession, Chat } from '@/lib/types'
@@ -34,15 +34,6 @@ interface ShowFeedProps {
 
 export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   const router = useRouter()
-
-  const [failedSelfieUrls, setFailedSelfieUrls] = useState<Set<string>>(new Set())
-  const markSelfieFailed = useCallback((url: string) => {
-    setFailedSelfieUrls((prev) => {
-      const next = new Set(prev)
-      next.add(url)
-      return next
-    })
-  }, [])
 
   const [users, setUsers] = useState<EventUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -472,21 +463,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
         <div className="flex items-center justify-between px-4 pb-3">
           <div className="flex items-center gap-2">
-            {((currentUser.selfie_url || '').trim().length > 0) && !failedSelfieUrls.has((currentUser.selfie_url || '').trim()) ? (
-              <img
-                src={(currentUser.selfie_url || '').trim()}
-                alt={currentUser.username}
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
-                onError={() => markSelfieFailed((currentUser.selfie_url || '').trim())}
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-linear-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden">
-                <div className="text-lg font-black text-transparent bg-clip-text bg-linear-to-r from-primary via-primary/80 to-secondary">
-                  {currentUser.username.charAt(0).toUpperCase()}
-                </div>
-              </div>
-            )}
+            <SelfieImage
+              src={currentUser.selfie_url}
+              alt={currentUser.username}
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-primary"
+              fallbackClassName="w-8 h-8 rounded-full bg-linear-to-br from-primary/20 to-secondary/20 flex items-center justify-center ring-2 ring-primary overflow-hidden"
+            />
             <div className="flex items-center gap-2">
               <div>
                 <p className="text-sm font-medium text-foreground">{currentUser.username}</p>
@@ -530,18 +512,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                     className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3"
                   >
                     <div className="flex items-center gap-3">
-                      {(vip.selfie_url || '').trim().length > 0 && !failedSelfieUrls.has((vip.selfie_url || '').trim()) ? (
-                        <img
-                          src={(vip.selfie_url || '').trim()}
-                          alt={vip.username}
-                          className="w-10 h-10 rounded-full object-cover"
-                          onError={() => markSelfieFailed((vip.selfie_url || '').trim())}
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                          <UserIcon className="h-5 w-5 text-amber-300" />
-                        </div>
-                      )}
+                    <SelfieImage
+                      src={vip.selfie_url}
+                      alt={vip.username}
+                      className="w-10 h-10 rounded-full object-cover"
+                      fallbackClassName="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center"
+                    />
                       <div>
                         <div className="flex items-center gap-2">
                           <div className="font-semibold">{vip.username}</div>
@@ -602,18 +578,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                         className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3"
                       >
                         <div className="flex items-center gap-3">
-                          {(u.selfie_url || '').trim().length > 0 && !failedSelfieUrls.has((u.selfie_url || '').trim()) ? (
-                            <img
-                              src={(u.selfie_url || '').trim()}
-                              alt={u.username}
-                              className="w-10 h-10 rounded-full object-cover"
-                              onError={() => markSelfieFailed((u.selfie_url || '').trim())}
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
-                              {u.username.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                        <SelfieImage
+                          src={u.selfie_url}
+                          alt={u.username}
+                          className="w-10 h-10 rounded-full object-cover"
+                          fallbackClassName="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center"
+                        />
                           <div>
                             <div className="font-semibold">{u.username}</div>
                             <div className="text-xs text-muted-foreground">{u.vibe_key}</div>

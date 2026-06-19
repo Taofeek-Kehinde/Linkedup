@@ -267,7 +267,10 @@ export function JoinFlow() {
           const { url } = await uploadRes.json()
           selfieUrl = url
         } else {
-          console.warn(`Upload failed: ${uploadRes.status} ${await uploadRes.text()}`);
+          const uploadErrorText = await uploadRes.text()
+          setError(`Failed to upload photo: ${uploadErrorText || uploadRes.statusText}`)
+          setIsLoading(false)
+          return
         }
       }
 

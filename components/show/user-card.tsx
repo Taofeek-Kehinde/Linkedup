@@ -4,8 +4,56 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MessageCircle, User, Lock } from 'lucide-react'
+import { MessageCircle, User } from 'lucide-react'
 import type { EventUser } from '@/lib/types'
+
+interface SelfieImageProps {
+  src: string | null | undefined
+  alt: string
+  className?: string
+  fallbackClassName?: string
+}
+
+export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieImageProps) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const selfieUrl = (src || '').trim()
+
+  useEffect(() => {
+    setImageFailed(false)
+    setRetryCount(0)
+  }, [selfieUrl])
+
+  const showFallback = imageFailed || selfieUrl.length === 0
+  const retryUrl = selfieUrl ? `${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}` : ''
+
+  if (showFallback) {
+    return (
+      <div className={fallbackClassName || 'w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10'}>
+        <User className="h-10 w-10 text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={retryUrl}
+      alt={alt}
+      className={className || 'w-full h-full object-cover'}
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        if (retryCount === 0) {
+          setRetryCount(1)
+          return
+        }
+
+        setImageFailed(true)
+      }}
+    />
+  )
+}
+
 interface UserCardProps {
   user: EventUser
   onChat: () => void
@@ -14,57 +62,23 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, onChat, onPass, canChat }: UserCardProps) {
-  const [imageFailed, setImageFailed] = useState(false)
-
-  useEffect(() => {
-    setImageFailed(false)
-  }, [user.selfie_url])
-
-  const selfieUrl = (user.selfie_url || '').trim()
-  const showFallback = imageFailed || selfieUrl.length === 0
-
-
 
 return (
      <div className="h-full flex items-center justify-center p-6">
        <Card className="w-full max-w-sm border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
          <CardContent className="p-0">
            {/* Selfie or placeholder */}
-           <div className="aspect-square w-full relative bg-gradient-to-br from-primary/20 to-accent/20">
-             {(() => {
-               const selfieUrl = (user.selfie_url || '').trim()
-               const showFallback = imageFailed || selfieUrl.length === 0
-               const isActive = user.is_active && !user.last_seen
-               return showFallback ? (
-                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-                   <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-                     {user.username.charAt(0).toUpperCase()}
-                   </div>
-                   {isActive && (
-                     <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background"></div>
-                   )}
-                 </div>
-               ) : (
-                 <>
-                   <img
-                     src={selfieUrl}
-                     alt={user.username}
-                     className="w-full h-full object-cover"
-                     loading="lazy"
-                     referrerPolicy="no-referrer"
-                     onError={() => {
-                       console.warn('Failed to load selfie image', { userId: user.id, selfieUrl })
-                       setImageFailed(true)
-                     }}
-                   />
-                   {isActive && (
-                     <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background"></div>
-                   )}
-                 </>
-               )
-             })()}
+            <div className="aspect-square w-full relative bg-gradient-to-br from-primary/20 to-accent/20">
+              <SelfieImage
+                src={user.selfie_url}
+                alt={user.username}
+                className="w-full h-full object-cover"
+              />
+              {user.is_active && !user.last_seen && (
+                <div className="absolute -bottom-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background"></div>
+              )}
 
-             {/* Overlay gradient */}
+              {/* Overlay gradient */}
              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card to-transparent" />
 
              {/* VIP tick */}
