@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Spinner } from '@/components/ui/spinner'
 
 /**
@@ -13,8 +12,8 @@ import { Spinner } from '@/components/ui/spinner'
  */
 export default function HostChatRedirectPage() {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
+
 
   useEffect(() => {
     let mounted = true
@@ -49,7 +48,8 @@ export default function HostChatRedirectPage() {
     return () => {
       mounted = false
     }
-  }, [router, supabase])
+  }, [router])
+
 
   if (loading) {
     return (
