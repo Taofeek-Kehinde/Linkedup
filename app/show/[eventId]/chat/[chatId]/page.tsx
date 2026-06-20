@@ -110,15 +110,28 @@ export default function ChatPage() {
         .eq('id', chatId)
         .single()
 
-if (!chatData) {
-         router.push(`/show/${eventId}`)
-         return
-       }
-       if (!chatData.is_active) {
-         router.push(`/show/${eventId}`)
-         return
-       }
-       setChat(chatData)
+      if (!chatData) {
+        router.push(`/show/${eventId}`)
+        return
+      }
+      if (!chatData.is_active) {
+        router.push(`/show/${eventId}`)
+        return
+      }
+
+      // Access control: only participants can view this chat (prevents seeing other users' chats)
+      const isParticipant =
+        chatData.user1_id === localSession.eventUserId ||
+        chatData.user2_id === localSession.eventUserId
+
+      if (!isParticipant) {
+        router.push(`/show/${eventId}`)
+        return
+      }
+
+      setChat(chatData)
+
+
 
       // Load partner
       const partnerId = chatData.user1_id === localSession.eventUserId

@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
-import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye, User as UserIcon } from 'lucide-react'
+import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye } from 'lucide-react'
 import Image from 'next/image'
-
 
 import { UserCard, SelfieImage } from '@/components/show/user-card'
 import { ChatList } from '@/components/chat/chat-list'
@@ -45,8 +44,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   const [showVip, setShowVip] = useState(false)
   const [vipUsers, setVipUsers] = useState<EventUser[]>([])
 
-
-
   const [hostUser, setHostUser] = useState<EventUser | null>(null)
 
   const [timeRemaining, setTimeRemaining] = useState<string>('')
@@ -57,11 +54,14 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   const [unreadCount, setUnreadCount] = useState(0)
 
-  const [notificationPermission, setNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
-  const notificationPermissionRef = useState(notificationPermission)[0]
+  const [notificationPermission] = useState<'default' | 'granted' | 'denied'>('default')
+  const notificationPermissionRef = useRef(notificationPermission)
 
-  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([]) // always keep latest only
+  const [broadcastMessages, setBroadcastMessages] = useState<BroadcastMessage[]>([])
 
+  useEffect(() => {
+    notificationPermissionRef.current = notificationPermission
+  }, [notificationPermission])
 
   const handleLeave = () => {
     clearLocalSession()
@@ -151,7 +151,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .eq('event_id', event.id)
       .eq('is_vip', true)
 
-    // Show VIPs only for the attendee's current location (if applicable)
     if (currentUser.location) {
       vipQuery.eq('location', currentUser.location)
     }
@@ -173,7 +172,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     setVipUsers((data || []).filter((vip) => !hiddenIds.has(vip.id)))
   }, [event.id, currentUser.id, currentUser.location])
 
-  // Host user lookup
   useEffect(() => {
     async function loadHost() {
       if (!event.host_id) return
@@ -193,6 +191,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
   const loadChats = useCallback(async () => {
     const supabase = createClient()
+
     const { data: blockedRelations } = await supabase
       .from('blocked_users')
       .select('blocker_id, blocked_id')
@@ -201,6 +200,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
     const blockedPartnerIds = new Set<string>()
     const hiddenIds = new Set<string>()
+
     ;(blockedRelations || []).forEach((relation: BlockedUserRelation) => {
       hiddenIds.add(relation.blocker_id)
       hiddenIds.add(relation.blocked_id)
@@ -222,10 +222,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .or(`user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}`)
       .eq('is_active', true)
 
-    setChats((data || []).filter((chat) => {
-      const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
-      return !blockedPartnerIds.has(partnerId)
-    }))
+    setChats(
+      (data || []).filter((chat) => {
+        const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
+        return !blockedPartnerIds.has(partnerId)
+      })
+    )
   }, [event.id, currentUser.id])
 
   useEffect(() => {
@@ -244,23 +246,13 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     loadVipUsers()
   }, [showVip, loadVipUsers])
 
-  // Real-time broadcast message (admin -> all attendees). Keep only latest.
   const broadcastMsgIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-
     const supabase = createClient()
 
-    // Debug: helps verify subscription is running for all attendees.
-    // Remove later if needed.
-    // console.log('broadcast subscription setup', event.id)
-
-
-    // Start with already-sent messages so late joiners / location switches still see them.
     const loadExisting = async () => {
       try {
-        // Include sender name if your RLS/query setup allows it.
-        // Otherwise we still do best-effort sender lookup after.
         const { data } = await supabase
           .from('broadcast_messages')
           .select('id, content, sender_id, created_at')
@@ -268,13 +260,10 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           .order('created_at', { ascending: true })
           .limit(50)
 
-
         if (!data) return
 
-        // Seed ids to prevent duplicates when realtime inserts arrive.
         data.forEach((m: any) => broadcastMsgIdsRef.current.add(m.id))
 
-        // Sender name lookup (best-effort, but avoids breaking UI)
         const senderIds = Array.from(new Set(data.map((m: any) => m.sender_id).filter(Boolean)))
         let senderMap: Record<string, string> = {}
 
@@ -298,7 +287,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
         })) as BroadcastMessage[]
 
         setBroadcastMessages(next.slice(-1))
-
       } catch {
         // ignore
       }
@@ -345,7 +333,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           }
 
           setBroadcastMessages((prev) => {
-            // Replace previous message so only ONE is visible at a time
             if (prev.length === 1 && prev[0]?.id === msg.id) return prev
             return [nextMsg]
           })
@@ -358,10 +345,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     }
   }, [event.id])
 
-
   useEffect(() => {
     function updateTimer() {
-
       const now = Date.now()
       let endTime = 0
 
@@ -433,7 +418,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       )}
 
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        {/* Event name centered on top, timer centered below */}
         <div className="flex flex-col items-center p-4">
           <h1 className="font-bold text-foreground text-center truncate max-w-full">{event.show_name}</h1>
           <div className="flex items-center justify-center mt-2 relative">
@@ -445,22 +429,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
           <div className="flex w-full justify-end">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-0">
-              {/* Host button (moved to bottom bar) */}
-              {/*
-              <Button
-                variant="outline"
-                className="ml-0 sm:ml-2 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-                onClick={() => router.push(`/show/${event.id}/host-chat`)}
-                disabled={event.status !== 'live'}
-                title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
-              >
-                <UserIcon className="h-4 w-4 mr-2" />
-                {hostUser ? `Host: ${hostUser.username}` : 'Host'}
-              </Button>
-              */}
-
-
-          {event.locations && event.locations.length > 1 && (
+              {event.locations && event.locations.length > 1 && (
                 <Button
                   variant="secondary"
                   className="mt-2 sm:mt-0 ml-0 sm:ml-3 rounded-full cursor-pointer border border-primary/30"
@@ -515,22 +484,22 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           </div>
 
           <div className="p-4 space-y-3 overflow-y-auto">
-            {vipUsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No VIPs yet</p>
-            ) : (
-              <div className="space-y-2">
-                {vipUsers.map((vip) => (
+            <div className="space-y-2">
+              {vipUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No VIPs yet</p>
+              ) : (
+                vipUsers.map((vip) => (
                   <div
                     key={vip.id}
                     className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3"
                   >
                     <div className="flex items-center gap-3">
-                    <SelfieImage
-                      src={vip.selfie_url}
-                      alt={vip.username}
-                      className="w-10 h-10 rounded-full object-cover"
-                      fallbackClassName="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center"
-                    />
+                      <SelfieImage
+                        src={vip.selfie_url}
+                        alt={vip.username}
+                        className="w-10 h-10 rounded-full object-cover"
+                        fallbackClassName="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center"
+                      />
                       <div>
                         <div className="flex items-center gap-2">
                           <div className="font-semibold">{vip.username}</div>
@@ -544,9 +513,9 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                       Peep
                     </Button>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       ) : showLocations ? (
@@ -556,10 +525,13 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
               <Eye className="h-4 w-4 text-primary" />
               <h2 className="font-bold">Locations</h2>
             </div>
-            <Button variant="ghost" onClick={() => {
-              setShowLocations(false)
-              setSelectedLocation(null)
-            }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowLocations(false)
+                setSelectedLocation(null)
+              }}
+            >
               Close
             </Button>
           </div>
@@ -591,12 +563,12 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
                         className="flex items-center justify-between gap-3 bg-card/50 border border-border/50 rounded-xl p-3"
                       >
                         <div className="flex items-center gap-3">
-                        <SelfieImage
-                          src={u.selfie_url}
-                          alt={u.username}
-                          className="w-10 h-10 rounded-full object-cover"
-                          fallbackClassName="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center"
-                        />
+                          <SelfieImage
+                            src={u.selfie_url}
+                            alt={u.username}
+                            className="w-10 h-10 rounded-full object-cover"
+                            fallbackClassName="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center"
+                          />
                           <div>
                             <div className="font-semibold">{u.username}</div>
                             <div className="text-xs text-muted-foreground">{u.vibe_key}</div>
@@ -651,7 +623,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             <span className="text-sm font-medium text-foreground">{userCount} here</span>
           </div>
 
-
           <Button
             variant={showChats ? 'secondary' : 'ghost'}
             size="icon"
@@ -668,7 +639,6 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           </Button>
 
           <div className="flex items-center gap-4 justify-end">
-            {/* Host/Admin button (crown only) */}
             <Button
               variant="outline"
               className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
@@ -678,14 +648,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             >
               <Crown className="h-4 w-4" />
             </Button>
-
-
           </div>
-
-
-
-
-
 
           <Button variant="ghost" size="icon" onClick={handleLeave}>
             <LogOut className="h-5 w-5" />
@@ -695,4 +658,3 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
     </main>
   )
 }
-
