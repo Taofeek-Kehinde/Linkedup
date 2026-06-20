@@ -124,9 +124,36 @@ export default function HostSetupPage({ params }: { params: Promise<{ id: string
   }, [event])
 
   const handleHostClick = () => {
-    // Simply redirect to the host chat page where attendees can chat with host
+    // Host chat expects `linkedup_session` in localStorage.
+    // We create a minimal session pointing to the HOST event_user row.
+    try {
+      const stored = localStorage.getItem('linkedup_session')
+      const session = stored ? JSON.parse(stored) : null
+
+      // We need the host's event_user id. If we already have `hostUser`, use it.
+      if (hostUser?.id) {
+        localStorage.setItem(
+          'linkedup_session',
+          JSON.stringify({
+            eventUserId: hostUser.id,
+            eventId: eventId,
+            username: hostUser.username || 'HOST',
+            vibeKey: hostUser.vibe_key || 'host',
+            sessionToken: hostUser.session_token,
+            selfieUrl: hostUser.selfie_url,
+            isUpgraded: Boolean(hostUser.is_upgraded),
+            isVip: Boolean(hostUser.is_vip),
+            isActive: hostUser.is_active ?? true,
+          })
+        )
+      }
+    } catch {
+      // ignore; navigation below will still happen.
+    }
+
     router.push(`/show/${eventId}/host-chat`)
   }
+
 
   const handleVipClick = () => {
     setIsVipMode(!isVipMode)

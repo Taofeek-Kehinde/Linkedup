@@ -1,12 +1,10 @@
-# Linkedup TODO
+# TODO
 
-## Host chat: user list + no message mixing
+- [ ] Fix HOST redirect loop by setting `linkedup_session` in localStorage when navigating from `app/admin/event/[id]/host-setup/page.tsx` to `/show/${eventId}/host-chat`.
+  - Determine the correct `UserSession` payload shape from `lib/types.ts` and existing join flow (`lib/utils/session.ts`).
+  - Implement `setLocalSession(...)` before `router.push(...)` in the HOST button handler.
 
-- [ ] Update `app/show/[eventId]/host-chat/page.tsx` to include a left sidebar that loads **all** `event_users` for the event (excluding the host account itself), rendered inside the existing chat container.
-- [ ] Add a `selectedUserId` + `activeChatId` mapping: when host clicks a user profile in the sidebar, create/find the dedicated `chats` row for (user <-> HOST) and load its `messages`.
-- [ ] Ensure message sending/subscription always targets the currently selected `chatId` (unsubscribe on change).
-- [ ] Add virtualization/scroll-safe layout for up to 100+ users in the left sidebar.
-- [ ] Ensure messages are rendered one per row with correct keys and alignment; fix any UI mixing by sorting by `created_at` and using stable `msg.id`.
-- [ ] If current code only loads chats that include HOST but not all users, add a fallback: show user even when there is no chat yet, and create chat when selected.
-- [ ] Add tests/manual verification notes.
+- [ ] (Optional) Add a guard in `/show/[eventId]/host-chat/page.tsx` so it redirects only when required fields exist, not just when `linkedup_session` is missing/invalid.
+
+- [ ] Test on Render: open host setup page and click HOST; verify it stays on `/show/:eventId/host-chat`.
 
