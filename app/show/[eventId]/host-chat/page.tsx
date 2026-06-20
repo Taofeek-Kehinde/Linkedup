@@ -154,7 +154,7 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
     await loadReportedUsers(safeMessages)
   }
 
-  useEffect(() => {
+useEffect(() => {
     let cancelled = false
 
     async function loadData() {
@@ -162,6 +162,20 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
 
       const sessionStr = localStorage.getItem('linkedup_session')
       if (!sessionStr) {
+        router.push('/join')
+        return
+      }
+
+      // If event is deleted/ended, immediately log out and stop host-chat
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('id,status,host_id')
+        .eq('id', eventId)
+        .single()
+
+      if (!eventData || eventData.status === 'ended') {
+        // clear host session + redirect
+        localStorage.removeItem('linkedup_session')
         router.push('/join')
         return
       }

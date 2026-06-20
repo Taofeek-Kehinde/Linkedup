@@ -732,49 +732,74 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
         </Card>
 
         {/* Action Buttons */}
-        <div className="space-y-3">
-{event.status === 'live' && (
-            <Button 
-              variant="outline"
-              className="w-full" 
+<div className="space-y-3">
+            {event.status === 'live' && (
+              <Button 
+                variant="outline"
+                className="w-full" 
+                size="lg"
+                onClick={() => router.push('/admin-self?eventId=' + event.id)}
+              >
+                <Users className="mr-2 h-5 w-5" />
+                SETUP HOST PROFILE
+              </Button>
+            )}
+
+            {event.status === 'upcoming' && (
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={startEvent}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <Play className="mr-2 h-5 w-5" />
+                )}
+                Start Event Now
+              </Button>
+            )}
+
+            {event.status === 'ended' && (
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={startEvent}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <Play className="mr-2 h-5 w-5" />
+                )}
+                Restart Event
+              </Button>
+            )}
+
+            {/* Rename/Delete menu (pen icon already toggles edit; add delete here for now) */}
+            <Button
+              variant="destructive"
+              className="w-full"
               size="lg"
-              onClick={() => router.push('/admin-self?eventId=' + event.id)}
-            >
-              <Users className="mr-2 h-5 w-5" />
-              SETUP HOST PROFILE
-            </Button>
-          )}
-          {event.status === 'upcoming' && (
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={startEvent}
               disabled={isUpdating}
+              onClick={async () => {
+                const ok = window.confirm('Delete this event now? This will end the event and log everyone out.')
+                if (!ok) return
+                setIsUpdating(true)
+                try {
+                  await fetch(`/api/admin/events/${event.id}/delete`, { method: 'POST' })
+                  // After delete, return to dashboard
+                  router.push('/admin/dashboard')
+                } finally {
+                  setIsUpdating(false)
+                }
+              }}
             >
-              {isUpdating ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <Play className="mr-2 h-5 w-5" />
-              )}
-              Start Event Now
+              <Trash2 className="mr-2 h-5 w-5" />
+              {isUpdating ? 'Deleting…' : 'Delete Event'}
             </Button>
-          )}
-          {event.status === 'ended' && (
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={startEvent}
-              disabled={isUpdating}
-            >
-              {isUpdating ? (
-                <Spinner className="mr-2" />
-              ) : (
-                <Play className="mr-2 h-5 w-5" />
-              )}
-              Restart Event
-            </Button>
-          )}
-        </div>
+          </div>
 
         {/* Participants List */}
         {users.length > 0 && (
