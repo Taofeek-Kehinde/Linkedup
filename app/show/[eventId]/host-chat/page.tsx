@@ -199,7 +199,8 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
           .from('event_users')
           .select('*')
           .eq('event_id', eventId)
-          .eq('username', 'HOST')
+          // host row is identified by the event's host auth user id
+          .eq('auth_user_id', eventData.host_id)
           .single()
 
         if (cancelled) return
