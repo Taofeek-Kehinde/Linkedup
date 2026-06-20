@@ -251,48 +251,51 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   useEffect(() => {
     const supabase = createClient()
 
-    const loadExisting = async () => {
+    async function fetchLatestBroadcast() {
       try {
-        const { data } = await supabase
+        const { data: latest } = await supabase
           .from('broadcast_messages')
           .select('id, content, sender_id, created_at')
           .eq('event_id', event.id)
-          .order('created_at', { ascending: true })
-          .limit(50)
+          .order('created_at', { ascending: false })
+          .limit(1)
 
-        if (!data) return
-
-        data.forEach((m: any) => broadcastMsgIdsRef.current.add(m.id))
-
-        const senderIds = Array.from(new Set(data.map((m: any) => m.sender_id).filter(Boolean)))
-        let senderMap: Record<string, string> = {}
-
-        if (senderIds.length) {
-          const { data: senders } = await supabase
-            .from('event_users')
-            .select('id, username')
-            .eq('event_id', event.id)
-            .in('id', senderIds)
-
-          if (senders) {
-            senderMap = Object.fromEntries(senders.map((s: any) => [s.id, s.username]))
-          }
+        const msg = latest?.[0] as any
+        if (!msg) {
+          setBroadcastMessages([])
+          return
         }
 
-        const next = data.map((m: any) => ({
-          id: m.id,
-          content: m.content,
-          sender_name: senderMap[m.sender_id] || 'ADMIN',
-          created_at: m.created_at,
-        })) as BroadcastMessage[]
+        // reset so the UI always shows only one
+        broadcastMsgIdsRef.current = new Set([msg.id])
 
-        setBroadcastMessages(next.slice(-1))
+        let senderName = 'ADMIN'
+        if (msg.sender_id) {
+          const { data: sender } = await supabase
+            .from('event_users')
+            .select('username')
+            .eq('event_id', event.id)
+            .eq('id', msg.sender_id)
+            .single()
+          if (sender?.username) senderName = sender.username
+        }
+
+        setBroadcastMessages([
+          {
+            id: msg.id,
+            content: msg.content,
+            sender_name: senderName,
+            created_at: msg.created_at,
+          },
+        ])
       } catch {
         // ignore
       }
     }
 
-    loadExisting()
+    // Always fetch on mount (reliable across locations)
+    fetchLatestBroadcast()
+
 
     const channel = supabase
       .channel(`event-${event.id}-broadcast`)
@@ -332,10 +335,10 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             created_at: msg.created_at,
           }
 
-          setBroadcastMessages((prev) => {
-            if (prev.length === 1 && prev[0]?.id === msg.id) return prev
-            return [nextMsg]
-          })
+          // Force everyone to converge to the latest message by re-fetching the latest row.
+          // This avoids timing issues caused by host deleting + inserting broadcast_messages.
+          await fetchLatestBroadcast()
+
         }
       )
       .subscribe()
