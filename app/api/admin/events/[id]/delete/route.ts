@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params
+  const { id } = await context.params
   const supabase = await createClient()
 
 
@@ -42,9 +42,12 @@ export async function POST(
     .update({
       status: 'ended',
       ends_at: now,
+      // Prevent auto-start / scheduled transitions from bringing the event back.
+      scheduled_start_at: null,
       starts_at: eventRow.status === 'upcoming' ? now : undefined,
     })
     .eq('id', id)
+
 
   // Attempt to delete the event; rely on FK/cascade if configured.
   // Even if the delete fails, we still want it ended.
