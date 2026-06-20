@@ -337,8 +337,13 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
 
           // Force everyone to converge to the latest message by re-fetching the latest row.
           // This avoids timing issues caused by host deleting + inserting broadcast_messages.
+          // If for any reason latest is not found yet, we keep the previous state.
+          const before = broadcastMessages
           await fetchLatestBroadcast()
-
+          if (broadcastMessages.length === 0) {
+            // restore previous state (rare race)
+            setBroadcastMessages(before)
+          }
         }
       )
       .subscribe()
@@ -642,6 +647,15 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
           </Button>
 
           <div className="flex items-center gap-4 justify-end">
+            <Button
+              variant="outline"
+              className="rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
+              onClick={() => setShowVip(true)}
+              title="View VIPs"
+            >
+              VIP <span className="text-xs">({vipUsers.length})</span>
+            </Button>
+
             <Button
               variant="outline"
               className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
