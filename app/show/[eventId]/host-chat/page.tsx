@@ -419,10 +419,8 @@ export default function HostChatPage({ params }: { params: Promise<{ eventId: st
                 <h2 className="font-semibold text-white">{hostUser.username}</h2>
                 <Crown className="w-4 h-4 text-yellow-500" />
               </div>
-              <div className="text-white/70 flex items-center justify-center">
-                <Crown className="w-4 h-4 text-yellow-500" />
-              </div>
             </div>
+
 
           </div>
 
