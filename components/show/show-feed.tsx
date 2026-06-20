@@ -642,7 +642,54 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             <Button
               variant="outline"
               className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
-              onClick={() => router.push(`/show/${event.id}/host-chat`)}
+              onClick={async () => {
+                if (event.status !== 'live') return
+
+                const supabase = createClient()
+
+                // Load host user row for this event
+                if (!event.host_id) return
+                const { data: hostRow, error: hostErr } = await supabase
+                  .from('event_users')
+                  .select('*')
+                  .eq('event_id', event.id)
+                  .eq('auth_user_id', event.host_id)
+                  .single()
+
+                if (hostErr || !hostRow?.id) return
+
+                // Ensure an active chat exists between current user and host
+                const { data: existingChat } = await supabase
+                  .from('chats')
+                  .select('id')
+                  .eq('event_id', event.id)
+                  .eq('is_active', true)
+                  .or(
+                    `and(user1_id.eq.${currentUser.id},user2_id.eq.${hostRow.id}),and(user1_id.eq.${hostRow.id},user2_id.eq.${currentUser.id})`
+                  )
+                  .single()
+
+                let chatId = existingChat?.id
+
+                if (!chatId) {
+                  const { data: newChat } = await supabase
+                    .from('chats')
+                    .insert({
+                      event_id: event.id,
+                      user1_id: currentUser.id,
+                      user2_id: hostRow.id,
+                      is_active: true,
+                    })
+                    .select('id')
+                    .single()
+
+                  chatId = newChat?.id
+                }
+
+                if (chatId) {
+                  router.push(`/show/${event.id}/chat/${chatId}`)
+                }
+              }}
               disabled={event.status !== 'live'}
               title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
             >
