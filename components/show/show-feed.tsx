@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { clearLocalSession } from '@/lib/utils/session'
 import { Button } from '@/components/ui/button'
-import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye } from 'lucide-react'
+import { Users, MessageCircle, Clock, LogOut, MapPin, Crown, X, Eye, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 
 import { UserCard, SelfieImage } from '@/components/show/user-card'
@@ -652,9 +652,11 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             onClick={() => setShowVip(true)}
             title="View VIPs"
           >
-            <Crown className="h-5 w-5" />
-            <span className="text-[10px] font-medium leading-tight">VIP</span>
-            <span className="text-[10px] text-primary/80">{vipUsers.length}</span>
+            <Sparkles className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-tight">
+              <span className="mr-1">{vipUsers.length}</span>
+              <span>VIP</span>
+            </span>
           </Button>
 
           <Button
