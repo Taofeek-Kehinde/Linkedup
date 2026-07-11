@@ -544,7 +544,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                 Scan to Join
               </CardTitle>
               <CardDescription>
-                Share this QR code with attendees
+                Download the Qr Code 
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
@@ -565,13 +565,6 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download QR
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={shareEvent}
-                >
-                  Share Event
                 </Button>
               </div>
             </CardContent>

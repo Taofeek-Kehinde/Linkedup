@@ -5,120 +5,139 @@ import { useEffect, useState } from "react";
 
 export default function InstallApp() {
 
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [showButton, setShowButton] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [showButton, setShowButton] = useState(false);
+    const [isIOS, setIsIOS] = useState(false);
 
 
-  useEffect(() => {
+    useEffect(() => {
 
-    const isIOSDevice =
-      /iphone|ipad|ipod/i.test(
-        navigator.userAgent
-      );
+        const isIOSDevice =
 
-
-    const isStandalone =
-      window.matchMedia(
-        "(display-mode: standalone)"
-      ).matches ||
-      (navigator as any).standalone === true;
+            /iphone|ipad|ipod/i.test(
+                navigator.userAgent
+            );
 
 
-    // Already installed
-    if (isStandalone) {
-      return;
+        const isStandalone =
+            window.matchMedia(
+                "(display-mode: standalone)"
+            ).matches ||
+            (navigator as any).standalone === true;
+
+
+        // Already installed
+        if (isStandalone) {
+            return;
+        }
+
+
+        setIsIOS(isIOSDevice);
+
+        const iosPromptShown =
+            localStorage.getItem(
+                "ios-install-prompt"
+            );
+
+
+        if (isIOSDevice && iosPromptShown) {
+            setShowButton(false);
+        }
+
+
+        // Android / Chrome / Edge
+        window.addEventListener(
+            "beforeinstallprompt",
+            (event: any) => {
+
+                event.preventDefault();
+
+                setInstallPrompt(event);
+
+                setShowButton(true);
+
+            }
+        );
+
+
+        // iPhone / iPad Safari
+        if (isIOSDevice) {
+
+            setShowButton(true);
+
+        }
+
+
+    }, []);
+
+
+
+    async function installApp() {
+
+
+        // iPhone / iPad
+        if (isIOS) {
+
+            alert(
+                "Install LinkedUp:\n\n" +
+                "1. Tap Share button\n" +
+                "2. Select Add to Home Screen\n" +
+                "3. Tap Add"
+            );
+
+            localStorage.setItem(
+                "ios-install-prompt",
+                "shown"
+            );
+
+
+            return;
+
+        }
+
+
+
+        // Android/Desktop
+        if (!installPrompt) {
+            return;
+        }
+
+
+        installPrompt.prompt();
+
+
+        const result =
+            await installPrompt.userChoice;
+
+
+        if (result.outcome === "accepted") {
+
+            console.log(
+                "LinkedUp installed"
+            );
+
+        }
+
+
+        if (result.outcome === "accepted") {
+            setInstallPrompt(null);
+            setShowButton(false);
+        }
+
     }
 
 
-    setIsIOS(isIOSDevice);
 
-
-    // Android / Chrome / Edge
-    window.addEventListener(
-      "beforeinstallprompt",
-      (event: any) => {
-
-        event.preventDefault();
-
-        setInstallPrompt(event);
-
-        setShowButton(true);
-
-      }
-    );
-
-
-    // iPhone / iPad Safari
-    if (isIOSDevice) {
-
-      setShowButton(true);
-
-    }
-
-
-  }, []);
-
-
-
-  async function installApp() {
-
-
-    // iPhone / iPad
-    if (isIOS) {
-
-      alert(
-        "Install LinkedUp:\n\n" +
-        "1. Tap Share button\n" +
-        "2. Select Add to Home Screen\n" +
-        "3. Tap Add"
-      );
-
-      return;
-
+    if (!showButton) {
+        return null;
     }
 
 
 
-    // Android/Desktop
-    if (!installPrompt) {
-      return;
-    }
-
-
-    installPrompt.prompt();
-
-
-    const result =
-      await installPrompt.userChoice;
-
-
-    if (result.outcome === "accepted") {
-
-      console.log(
-        "LinkedUp installed"
-      );
-
-    }
-
-
-    setInstallPrompt(null);
-    setShowButton(false);
-
-  }
-
-
-
-  if (!showButton) {
-    return null;
-  }
-
-
-
-  return (
-    <button
-  onClick={installApp}
-  className="
+    return (
+        <button
+            onClick={installApp}
+            className="
   fixed
   bottom-5
   right-5
@@ -133,11 +152,11 @@ export default function InstallApp() {
   items-center
   gap-2
   "
->
-  <Download size={20} />
+        >
+            <Download size={20} />
 
-  Install LinkedUp
-</button>
-  );
+            Install LinkedUp
+        </button>
+    );
 
 }
