@@ -625,97 +625,97 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       )}
 
       <div className="sticky bottom-0 z-40 bg-background/80 backdrop-blur-lg border-t border-border/50">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-2">
+        <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:px-4">
+          <div className="flex flex-col items-center justify-center rounded-xl px-1 py-2 text-center">
             <Users className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">{userCount} here</span>
+            <span className="mt-1 text-[10px] font-medium leading-tight text-foreground">{userCount} here</span>
           </div>
 
           <Button
             variant={showChats ? 'secondary' : 'ghost'}
-            size="icon"
-            className="relative"
+            className="relative flex h-auto flex-col items-center justify-center gap-1 rounded-xl px-1 py-2"
             onClick={() => {
               setShowChats(!showChats)
               if (unreadCount > 0) setUnreadCount(0)
             }}
           >
             <MessageCircle className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-tight">Message</span>
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
             )}
           </Button>
 
-          <div className="flex items-center gap-4 justify-end">
-            <Button
-              variant="outline"
-              className="rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
-              onClick={() => setShowVip(true)}
-              title="View VIPs"
-            >
-              VIP <span className="text-xs">({vipUsers.length})</span>
-            </Button>
+          <Button
+            variant="outline"
+            className="flex h-auto flex-col items-center justify-center gap-1 rounded-xl border-primary/30 bg-primary/5 px-1 py-2 text-primary hover:bg-primary/10"
+            onClick={() => setShowVip(true)}
+            title="View VIPs"
+          >
+            <Crown className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-tight">VIP</span>
+            <span className="text-[10px] text-primary/80">{vipUsers.length}</span>
+          </Button>
 
-            <Button
-              variant="outline"
-              className="ml-1 rounded-full border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 px-3"
-              onClick={async () => {
-                if (event.status !== 'live') return
+          <Button
+            variant="outline"
+            className="flex h-auto flex-col items-center justify-center gap-1 rounded-xl border-primary/30 bg-primary/5 px-1 py-2 text-primary hover:bg-primary/10"
+            onClick={async () => {
+              if (event.status !== 'live') return
 
-                const supabase = createClient()
+              const supabase = createClient()
 
-                // Load host user row for this event
-                if (!event.host_id) return
-                const { data: hostRow, error: hostErr } = await supabase
-                  .from('event_users')
-                  .select('*')
-                  .eq('event_id', event.id)
-                  .eq('auth_user_id', event.host_id)
-                  .single()
+              if (!event.host_id) return
+              const { data: hostRow, error: hostErr } = await supabase
+                .from('event_users')
+                .select('*')
+                .eq('event_id', event.id)
+                .eq('auth_user_id', event.host_id)
+                .single()
 
-                if (hostErr || !hostRow?.id) return
+              if (hostErr || !hostRow?.id) return
 
-                // Ensure an active chat exists between current user and host
-                const { data: existingChat } = await supabase
+              const { data: existingChat } = await supabase
+                .from('chats')
+                .select('id')
+                .eq('event_id', event.id)
+                .eq('is_active', true)
+                .or(
+                  `and(user1_id.eq.${currentUser.id},user2_id.eq.${hostRow.id}),and(user1_id.eq.${hostRow.id},user2_id.eq.${currentUser.id})`
+                )
+                .single()
+
+              let chatId = existingChat?.id
+
+              if (!chatId) {
+                const { data: newChat } = await supabase
                   .from('chats')
+                  .insert({
+                    event_id: event.id,
+                    user1_id: currentUser.id,
+                    user2_id: hostRow.id,
+                    is_active: true,
+                  })
                   .select('id')
-                  .eq('event_id', event.id)
-                  .eq('is_active', true)
-                  .or(
-                    `and(user1_id.eq.${currentUser.id},user2_id.eq.${hostRow.id}),and(user1_id.eq.${hostRow.id},user2_id.eq.${currentUser.id})`
-                  )
                   .single()
 
-                let chatId = existingChat?.id
+                chatId = newChat?.id
+              }
 
-                if (!chatId) {
-                  const { data: newChat } = await supabase
-                    .from('chats')
-                    .insert({
-                      event_id: event.id,
-                      user1_id: currentUser.id,
-                      user2_id: hostRow.id,
-                      is_active: true,
-                    })
-                    .select('id')
-                    .single()
+              if (chatId) {
+                router.push(`/show/${event.id}/chat/${chatId}`)
+              }
+            }}
+            disabled={event.status !== 'live'}
+            title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
+          >
+            <Crown className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-tight">Host</span>
+          </Button>
 
-                  chatId = newChat?.id
-                }
-
-                if (chatId) {
-                  router.push(`/show/${event.id}/chat/${chatId}`)
-                }
-              }}
-              disabled={event.status !== 'live'}
-              title={event.status !== 'live' ? 'Host setup available when event is live' : 'Chat with host'}
-            >
-              <Crown className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Button variant="ghost" size="icon" onClick={handleLeave}>
+          <Button variant="ghost" className="flex h-auto flex-col items-center justify-center gap-1 rounded-xl px-1 py-2" onClick={handleLeave}>
             <LogOut className="h-5 w-5" />
+            <span className="text-[10px] font-medium leading-tight">Logout</span>
           </Button>
         </div>
       </div>
