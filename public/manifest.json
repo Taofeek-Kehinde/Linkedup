@@ -1,0 +1,22 @@
+{
+  "name": "LinkedUp - Connect at Events",
+  "short_name": "LinkedUp",
+  "description": "Real-time event-based social app. Join events and connect with people.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
