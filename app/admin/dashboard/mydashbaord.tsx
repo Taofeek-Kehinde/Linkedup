@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./mydashbaord.module.css";
 
 export default function MyDashboard() {
+  const router = useRouter();
   const [seconds, setSeconds] = useState(225);
 
   useEffect(() => {
@@ -60,12 +62,16 @@ export default function MyDashboard() {
 
           <div className={styles.buttonRow}>
 
-            <button className={styles.circleButton}>
-              <Image src="/link.png" alt="Link" width={28} height={28} className="object-contain" />
+            <button
+              className={styles.circleButton}
+              onClick={() => router.push("/admin/create")}
+              type="button"
+            >
+              <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
             </button>
 
             <button className={styles.circleButton}>
-              <Image src="/user.png" alt="User" width={28} height={28} className="object-contain" />
+              <Image src="/user.png" alt="User" width={200} height={200} className="object-contain" />
             </button>
 
           </div>

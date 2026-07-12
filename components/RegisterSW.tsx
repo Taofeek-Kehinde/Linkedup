@@ -8,6 +8,15 @@ export default function RegisterSW() {
 
     if ("serviceWorker" in navigator) {
 
+      if (process.env.NODE_ENV !== 'production') {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister();
+          });
+        });
+        return;
+      }
+
       navigator.serviceWorker.register("/sw.js")
         .then(() => {
           console.log("Service Worker registered");
