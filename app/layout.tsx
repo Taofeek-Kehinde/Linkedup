@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-// import { Analytics } from '@vercel/analytics/next'
-import Image from 'next/image'
 import RegisterSW from "@/components/RegisterSW";
 import InstallApp from "@/components/InstallApp";
 import './globals.css'
+
 
 const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
@@ -39,7 +38,7 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-dvh">
 
       <RegisterSW />
-         <InstallApp />
+      <InstallApp />
         {/* GLOBAL HEADER WITH LOGO */}
         <header className="w-full flex items-center px-6 py-4 border-b border-border">
          
@@ -48,8 +47,7 @@ export default function RootLayout({
         {/* PAGE CONTENT */}
         <main>{children}</main>
 
-        {/* ANALYTICS */}
-        {/* {process.env.NODE_ENV === 'production' && <Analytics />} */}
+      
       </body>
     </html>
   )
