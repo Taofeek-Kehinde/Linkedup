@@ -1,22 +1,37 @@
 .page {
-  position: relative;
+  position: fixed;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   overflow: hidden;
   background: #000;
   font-family: Georgia, "Times New Roman", serif;
+  padding: 16px 12px 24px;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background: #000;
 }
 
 .background {
   position: absolute;
-  inset: 0;
+  inset: -10px;
   background-image: url("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80");
   background-size: cover;
   background-position: center;
-  transform: scale(1.12);
+  background-repeat: no-repeat;
+  transform: scale(1.08);
   filter: blur(8px) brightness(0.88);
 }
 
@@ -43,6 +58,8 @@
   -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(120%);
   box-shadow: 0 35px 80px rgba(0,0,0,0.30), 0 10px 30px rgba(255,255,255,0.08), inset 0 2px 1px rgba(255,255,255,0.95), inset 0 -2px 2px rgba(255,255,255,0.15);
   animation: floatCard 6s ease-in-out infinite;
+  flex-shrink: 0;
+  margin-top: 0;
 }
 
 .glassCard::before {
@@ -90,6 +107,7 @@
   background: linear-gradient(145deg, #ffffff, #f4f4f4, #cfcfcf, #ffffff);
   box-shadow: 0 20px 40px rgba(0,0,0,0.28), inset 0 4px 6px rgba(255,255,255,1), inset 0 -5px 8px rgba(150,150,150,0.35);
   animation: ringFloat 5s ease-in-out infinite;
+  margin-top: 0;
 }
 
 .timerGlow {
@@ -110,15 +128,43 @@
   align-items: center;
   background: radial-gradient(circle at top, #777, #444, #202020);
   color: white;
-  font-size: 46px;
-  font-weight: 300;
-  letter-spacing: 1px;
   box-shadow: inset 0 0 20px rgba(255,255,255,0.25), 0 0 12px rgba(0,0,0,0.35);
   text-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
+.timerText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  line-height: 1;
+  padding: 6px;
+}
+
+.timerValue {
+  font-size: clamp(18px, 4vw, 23px);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.timerLabel {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.descriptionWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
 .description {
-  margin-top: 28px;
   font-size: 27px;
   font-weight: 600;
   text-align: center;
@@ -128,12 +174,158 @@
   line-height: 1.2;
 }
 
+.descriptionDivider {
+  width: 90%;
+  height: 1px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
+}
+
 .buttonRow {
   width: 100%;
-  padding: 0 30px;
+  padding: 0 35px 0 50px;
   display: flex;
   justify-content: space-between;
-  margin-top: 30px;
+  margin-top: 25px;
+}
+
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.86);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+.inviteOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.22s ease-out;
+}
+
+.inviteCard {
+  position: relative;
+  width: min(92vw, 420px);
+  padding: 22px 22px 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.72));
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+  animation: riseIn 0.28s ease-out;
+}
+
+.inviteClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 15, 15, 0.08);
+  color: #111;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.inviteBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(11, 114, 255, 0.12);
+  color: #0b5ed7;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.inviteTitle {
+  margin: 12px 0 6px;
+  font-size: 22px;
+  color: #111;
+}
+
+.inviteSubtitle {
+  margin: 0 0 16px;
+  color: #4a5568;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inviteField {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.inviteLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #4a5568;
+}
+
+.inviteValue {
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inviteLinkBox {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(11, 114, 255, 0.08);
+  border: 1px dashed rgba(11, 114, 255, 0.24);
+}
+
+.inviteLinkText {
+  display: block;
+  color: #0b5ed7;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.copyButton {
+  margin-top: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 14px;
+  background: linear-gradient(90deg, #111827, #2d3748);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.copyButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.24);
 }
 
 .circleButton {
@@ -151,6 +343,17 @@
   backdrop-filter: blur(12px);
 }
 
+.disabledButton {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none !important;
+}
+
+.disabledButton:hover {
+  transform: none !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.95), inset 0 -2px 4px rgba(0,0,0,0.12);
+}
+
 .circleButton svg {
   color: #111;
   transition: 0.35s;
@@ -166,26 +369,28 @@
 }
 
 .footer {
-  position: absolute;
-  bottom: 55px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   text-align: center;
   z-index: 50;
   width: 100%;
+  padding: 0 20px;
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 .footer h1 {
-  font-size: 64px;
+  font-size: clamp(2rem, 4vw, 4rem);
   font-weight: 500;
   color: #111;
   letter-spacing: 0.5px;
   text-shadow: 0 2px 2px rgba(255,255,255,0.45);
+  line-height: 1.1;
+  margin: 0;
 }
 
 .footer p {
-  margin-top: 18px;
-  font-size: 24px;
+  margin-top: 8px;
+  font-size: clamp(0.95rem, 2.2vw, 1.5rem);
   font-weight: 500;
   color: #111;
   letter-spacing: 1px;
@@ -230,15 +435,37 @@
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 900px) {
   .glassCard {
     width: 380px;
     height: 340px;
+    margin-top: 0;
   }
 
   .timerOuter {
     width: 150px;
     height: 150px;
+    margin-top: 0;
   }
 
   .timerGlow {
@@ -254,6 +481,11 @@
 
   .description {
     font-size: 24px;
+    margin-top: 16px;
+  }
+
+  .buttonRow {
+    padding: 0 28px 0 42px;
   }
 
   .footer h1 {
@@ -271,11 +503,13 @@
     max-width: 360px;
     height: 320px;
     border-radius: 28px;
+    margin-top: 0;
   }
 
   .timerOuter {
     width: 145px;
     height: 145px;
+    margin-top: 0;
   }
 
   .timerGlow {
@@ -292,10 +526,11 @@
   .description {
     font-size: 22px;
     padding: 0 20px;
+    margin-top: 14px;
   }
 
   .buttonRow {
-    padding: 0 24px;
+    padding: 0 22px 0 36px;
   }
 
   .circleButton {
@@ -304,7 +539,8 @@
   }
 
   .footer {
-    bottom: 35px;
+    padding: 8px 20px 0 20px;
+    margin-top: -2px;
   }
 
   .footer h1 {
@@ -313,7 +549,7 @@
 
   .footer p {
     font-size: 17px;
-    margin-top: 10px;
+    margin-top: 6px;
   }
 }
 
@@ -324,11 +560,13 @@
 
   .glassCard {
     height: 300px;
+    margin-top: 0;
   }
 
   .timerOuter {
     width: 132px;
     height: 132px;
+    margin-top: 0;
   }
 
   .timerGlow {
@@ -344,11 +582,21 @@
 
   .description {
     font-size: 18px;
+    margin-top: 12px;
+  }
+
+  .buttonRow {
+    padding: 0 18px 0 30px;
   }
 
   .circleButton {
     width: 54px;
     height: 54px;
+  }
+
+  .footer {
+    padding: 6px 16px 0 16px;
+    margin-top: 0px;
   }
 
   .footer h1 {
@@ -357,5 +605,6 @@
 
   .footer p {
     font-size: 15px;
+    margin-top: 4px;
   }
 }
