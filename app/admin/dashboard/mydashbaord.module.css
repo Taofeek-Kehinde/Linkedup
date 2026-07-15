@@ -498,18 +498,25 @@ body {
 }
 
 @media (max-width: 768px) {
+  .page {
+    padding: 14px 12px 18px;
+  }
+
   .glassCard {
     width: 92%;
     max-width: 360px;
-    height: 320px;
+    height: min(78vh, 360px);
+    min-height: 330px;
     border-radius: 28px;
     margin-top: 0;
+    padding: 14px 0 16px;
+    justify-content: space-between;
   }
 
   .timerOuter {
     width: 145px;
     height: 145px;
-    margin-top: 0;
+    margin-top: 8px;
   }
 
   .timerGlow {
@@ -523,14 +530,22 @@ body {
     font-size: 38px;
   }
 
+  .descriptionWrap {
+    margin-top: 12px;
+    padding: 0 10px;
+  }
+
   .description {
     font-size: 22px;
-    padding: 0 20px;
-    margin-top: 14px;
+    padding: 0 10px;
+    margin-top: 0;
   }
 
   .buttonRow {
-    padding: 0 22px 0 36px;
+    width: calc(100% - 24px);
+    padding: 0 12px;
+    margin-top: 16px;
+    margin-bottom: 4px;
   }
 
   .circleButton {
@@ -540,7 +555,7 @@ body {
 
   .footer {
     padding: 8px 20px 0 20px;
-    margin-top: -2px;
+    margin-top: 10px;
   }
 
   .footer h1 {
@@ -558,15 +573,24 @@ body {
     transform: scale(1.25);
   }
 
+  .page {
+    padding: 12px 10px 16px;
+  }
+
   .glassCard {
-    height: 300px;
+    width: 100%;
+    max-width: 100%;
+    height: min(80vh, 320px);
+    min-height: 300px;
     margin-top: 0;
+    padding: 10px 0 12px;
+    justify-content: space-between;
   }
 
   .timerOuter {
     width: 132px;
     height: 132px;
-    margin-top: 0;
+    margin-top: 4px;
   }
 
   .timerGlow {
@@ -580,13 +604,21 @@ body {
     font-size: 34px;
   }
 
+  .descriptionWrap {
+    margin-top: 10px;
+    padding: 0 8px;
+  }
+
   .description {
     font-size: 18px;
-    margin-top: 12px;
+    margin-top: 0;
   }
 
   .buttonRow {
-    padding: 0 18px 0 30px;
+    width: calc(100% - 20px);
+    padding: 0 10px;
+    margin-top: 12px;
+    margin-bottom: 2px;
   }
 
   .circleButton {
@@ -596,7 +628,7 @@ body {
 
   .footer {
     padding: 6px 16px 0 16px;
-    margin-top: 0px;
+    margin-top: 8px;
   }
 
   .footer h1 {
