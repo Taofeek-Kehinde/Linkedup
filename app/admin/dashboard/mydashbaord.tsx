@@ -121,10 +121,7 @@ export default function MyDashboard() {
       return;
     }
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    setJoinLink(`${origin}/join?code=${activeEvent.event_code}`);
-    setCopyLabel("Copy link");
-    setIsInviteOpen(true);
+    window.location.href = "/admin/create";
   };
 
   const closeInvite = () => {
@@ -217,7 +214,13 @@ export default function MyDashboard() {
             <Image src="/link.png" alt="Showup" width={70} height={70} className="object-contain" />
           </button>
 
-          <button className={styles.circleButton}>
+          <button
+            className={styles.circleButton}
+            onClick={() => {
+              window.location.href = "/admin/create";
+            }}
+            type="button"
+          >
             <Image src="/user.png" alt="User" width={70} height={70} className="object-contain" />
           </button>
         </div>
