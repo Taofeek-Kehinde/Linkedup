@@ -6,21 +6,52 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Link as LinkIcon, Copy, Check, Users, ExternalLink, Clock } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import {
+  ArrowLeft,
+  Link as LinkIcon,
+  Copy,
+  Check,
+  Eye,
+  ExternalLink,
+  Clock,
+  Users,
+  MapPin,
+  Trash2,
+  Crown,
+  RefreshCw
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
-import type { Event } from '@/lib/types'
+import type { Event, EventUser } from '@/lib/types'
 import { useToast } from '@/components/ui/use-toast'
+import Image from 'next/image'
 
 export default function LinkDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { id } = use(params)
   const [event, setEvent] = useState<Event | null>(null)
+  const [users, setUsers] = useState<EventUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { toast } = useToast()
+
+  const getOptimizedImageUrl = (url: string, size: number = 100) => {
+    if (!url) return ''
+    if (url.includes('supabase.co')) {
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}width=${size}&height=${size}&resize=cover&quality=90`
+    }
+    return url
+  }
+
+  const handleImageError = (userId: string) => {
+    setImageErrors(prev => ({ ...prev, [userId]: true }))
+  }
 
   useEffect(() => {
     async function loadEvent() {
@@ -44,12 +75,70 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
         return
       }
 
-      setEvent(eventData)
+      let eventToUse = eventData
+      if (eventData.status === 'live') {
+        const nowTime = Date.now()
+        let expired = false
+        if (eventData.ends_at) {
+          expired = new Date(eventData.ends_at).getTime() < nowTime
+        } else if (eventData.starts_at) {
+          expired = new Date(eventData.starts_at).getTime() + (eventData.duration_hours * 60 * 60 * 1000) < nowTime
+        } else {
+          expired = new Date(eventData.created_at).getTime() + (15 * 60 * 60 * 1000) < nowTime
+        }
+
+        if (expired) {
+          const { data: updatedEvent } = await supabase
+            .from('events')
+            .update({ status: 'ended' })
+            .eq('id', eventData.id)
+            .select()
+            .single()
+          if (updatedEvent) {
+            eventToUse = updatedEvent
+          }
+        }
+      }
+
+      setEvent(eventToUse)
+
+      const { data: usersData } = await supabase
+        .from('event_users')
+        .select('*')
+        .eq('event_id', id)
+        .order('created_at', { ascending: false })
+
+      setUsers(usersData || [])
       setIsLoading(false)
     }
 
     loadEvent()
   }, [id, router])
+
+  useEffect(() => {
+    if (!event) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`link-event-users-${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'event_users', filter: `event_id=eq.${id}` },
+        async () => {
+          const { data } = await supabase
+            .from('event_users')
+            .select('*')
+            .eq('event_id', id)
+            .order('created_at', { ascending: false })
+          setUsers(data || [])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [event, id])
 
   useEffect(() => {
     if (!event) return
@@ -119,6 +208,22 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  async function toggleVip(userItem: EventUser) {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('event_users')
+      .update({ is_vip: !userItem.is_vip })
+      .eq('id', userItem.id)
+
+    if (!error) {
+      setUsers(users.map(u => u.id === userItem.id ? { ...u, is_vip: !u.is_vip } : u))
+      toast({
+        title: 'Success',
+        description: `${userItem.username} ${!userItem.is_vip ? 'is now a VIP' : 'is no longer a VIP'}`
+      })
+    }
+  }
+
   if (isLoading || !event) {
     return (
       <main className="min-h-dvh flex items-center justify-center">
@@ -137,54 +242,53 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Event Created!</h1>
-            <p className="text-sm text-muted-foreground">Share the link to let people join</p>
-          </div>
+          <div className="flex-1 space-y-1">
+            <h1 className="text-xl font-bold text-foreground truncate">{event.show_name}</h1>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-primary text-sm">{event.event_code}</span>
+              <Badge variant={event.status === 'live' ? 'default' : 'secondary'}>
+                {event.status}
+              </Badge>
+              <span className="text-xs text-muted-foreground">({users.length} joined)</span>
+            </div>
         </div>
 
-        {/* Link Card */}
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="flex items-center justify-center gap-2 text-foreground">
-              <LinkIcon className="h-5 w-5 text-primary" />
+        {/* Link Card - Share the join link (NO QR code) */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-foreground text-base">
+              <LinkIcon className="h-4 w-4 text-primary" />
               Share this link
             </CardTitle>
-            <CardDescription>
-              Anyone with this link can join your event instantly
+            <CardDescription className="text-xs">
+              Send this link for people to join online — no QR scan needed
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            {/* Event Name */}
-            <div className="w-full text-center">
-              <h2 className="text-xl font-bold text-foreground">{event.show_name}</h2>
-              <p className="text-sm text-muted-foreground font-mono mt-1">{event.event_code}</p>
-            </div>
-
+          <CardContent className="flex flex-col items-center gap-3">
             {/* Timer */}
-            {timeRemaining && timeRemaining !== 'Event ended' && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Time remaining: <strong className="text-foreground font-mono">{timeRemaining}</strong></span>
+            {event.status === 'live' && timeRemaining && (
+              <div className="w-full text-center">
+                <p className="text-xs text-muted-foreground mb-1">Time Remaining</p>
+                <p className="text-2xl font-mono font-bold text-primary">{timeRemaining}</p>
               </div>
             )}
 
             {/* Link Box */}
-            <div className="w-full bg-muted/50 border rounded-lg p-3">
+            <div className="w-full bg-background/80 border rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wide">Join Link</p>
               <p className="text-sm text-primary break-all font-mono">{joinUrl}</p>
             </div>
 
             {/* Copy Button */}
-            <Button onClick={copyLink} className="w-full" size="lg">
+            <Button onClick={copyLink} className="w-full" variant="secondary">
               {copied ? (
                 <>
-                  <Check className="mr-2 h-5 w-5" />
+                  <Check className="mr-2 h-4 w-4" />
                   Copied!
                 </>
               ) : (
                 <>
-                  <Copy className="mr-2 h-5 w-5" />
+                  <Copy className="mr-2 h-4 w-4" />
                   Copy Link
                 </>
               )}
@@ -192,43 +296,78 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
           </CardContent>
         </Card>
 
-        {/* Actions */}
+        {/* Event Info */}
         <Card className="border-border/50 bg-card/50">
           <CardContent className="p-4 space-y-3">
-            <Button
-              variant="default"
-              className="w-full"
-              size="lg"
-              onClick={() => router.push(`/admin/event/${event.id}`)}
-            >
-              <Users className="mr-2 h-5 w-5" />
-              Event Dashboard
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              size="lg"
-              onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}
-            >
-              <ExternalLink className="mr-2 h-5 w-5" />
-              Host Setup
-            </Button>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                Participants
+              </span>
+              <span className="font-semibold text-foreground">{users.length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                Location
+              </span>
+              <span className="font-semibold text-foreground">Online</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                Duration
+              </span>
+              <span className="font-semibold text-foreground">{event.duration_hours} hours</span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Info */}
-        <Card className="border-border/50 bg-card/30">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">How it works:</strong>
-              <br />
-              Share the link above with anyone you want to join. They&apos;ll enter the event and can start connecting instantly — no QR code needed.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
-  )
-}
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <Button
+            variant="default"
+            className="w-full"
+            size="lg"
+            onClick={async () => {
+              const supabase = createClient();
 
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) {
+                router.push('/admin');
+                return;
+              }
+
+              let { data: hostUser } = await supabase
+                .from('event_users')
+                .select('*')
+                .eq('event_id', event.id)
+                .eq('auth_user_id', user.id)
+                .single();
+
+              if (!hostUser) {
+                const { generateVibeKey } = await import('@/lib/utils/generate-vibe-key');
+                const { generateSessionToken } = await import('@/lib/utils/generate-session-token');
+
+                const username = `host${event.show_name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)}`;
+                const vibeKey = generateVibeKey();
+                const sessionToken = generateSessionToken();
+
+                const { data: newHost, error } = await supabase
+                  .from('event_users')
+                  .insert({
+                    event_id: event.id,
+                    username,
+                    vibe_key: vibeKey,
+                    session_token: sessionToken,
+                    auth_user_id: user.id,
+                    is_vip: true,
+                    is_active: true,
+                  })
+                  .select()
+                  .single();
+
+                if (error || !newHost) {
+                  router.push('/admin/dashboard');
+                  return;
+                }
