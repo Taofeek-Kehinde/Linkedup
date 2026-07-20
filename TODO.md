@@ -1,5 +1,10 @@
-- [ ] Confirm the deployment platform issue: `_vercel/insights/script.js` 404 is from `@vercel/analytics` / Web Analytics not enabled.
-- [ ] No code changes required for the analytics 404.
-- [ ] Provide exact steps to enable Vercel Web Analytics for the Render/Vercel project (or remove Analytics usage if not using Vercel).
-- [ ] If you are not using Vercel at all, update `app/layout.tsx` to remove `@vercel/analytics` (optional).
+# Link Button Independent Flow - Progress
+
+## Steps
+
+- [x] Plan confirmed with user
+- [x] Create `app/admin/link/create/page.tsx` - Simple event creation (just name + 15h timer)
+- [x] Create `app/admin/link/[id]/page.tsx` - Shareable link success page
+- [x] Modify `app/admin/dashboard/mydashbaord.tsx` - Update left button to navigate to link flow
+- [x] Run build check ✓ (no errors)
 

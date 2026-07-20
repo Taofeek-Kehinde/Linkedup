@@ -206,12 +206,13 @@ export default function MyDashboard() {
 
         <div className={styles.buttonRow}>
           <button
-            className={`${styles.circleButton} ${!hasEvent || isCheckingEvent ? styles.disabledButton : ""}`}
-            onClick={handleShowupClick}
+            className={styles.circleButton}
+            onClick={() => {
+              window.location.href = "/admin/link/create";
+            }}
             type="button"
-            aria-disabled={!hasEvent || isCheckingEvent}
           >
-            <Image src="/link.png" alt="Showup" width={70} height={70} className="object-contain" />
+            <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
           </button>
 
           <button
