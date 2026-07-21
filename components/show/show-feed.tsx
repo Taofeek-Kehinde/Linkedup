@@ -248,7 +248,8 @@ const [chats, setChats] = useState<Chat[]>([])
   useEffect(() => {
     loadUsers()
     loadChats()
-  }, [loadUsers, loadChats])
+    loadVipUsers()
+  }, [loadUsers, loadChats, loadVipUsers])
 
   useEffect(() => {
     if (users.length > 0 && currentIndex >= users.length) {
@@ -640,7 +641,7 @@ const [chats, setChats] = useState<Chat[]>([])
       )}
 
       <div className="sticky bottom-0 z-40 bg-background/80 backdrop-blur-lg border-t border-border/50">
-        <div className="grid grid-cols-5 gap-1 px-2 py-2 sm:px-4">
+        <div className="grid grid-cols-4 gap-1 px-2 py-2 sm:px-4">
           <div className="flex flex-col items-center justify-center rounded-xl px-1 py-2 text-center">
             <Users className="h-5 w-5 text-muted-foreground" />
             <span className="mt-1 text-[10px] font-medium leading-tight text-foreground">{userCount} here</span>
@@ -674,7 +675,7 @@ const [chats, setChats] = useState<Chat[]>([])
             </span>
           </Button>
 
-          <Button
+          {/* <Button
             variant="outline"
             className="flex h-auto flex-col items-center justify-center gap-1 rounded-xl border-primary/30 bg-primary/5 px-1 py-2 text-primary hover:bg-primary/10"
             onClick={async () => {
@@ -728,7 +729,7 @@ const [chats, setChats] = useState<Chat[]>([])
           >
             <Crown className="h-5 w-5" />
             <span className="text-[10px] font-medium leading-tight">Host</span>
-          </Button>
+          </Button> */}
 
           <Button variant="ghost" className="flex h-auto flex-col items-center justify-center gap-1 rounded-xl px-1 py-2" onClick={handleLeave}>
             <LogOut className="h-5 w-5" />
