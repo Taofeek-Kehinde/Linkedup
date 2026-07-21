@@ -726,7 +726,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Action Buttons */}
 <div className="space-y-3">
-            {event.status === 'live' && (
+{/* {event.status === 'live' && (
               <Button 
                 variant="outline"
                 className="w-full" 
@@ -736,7 +736,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                 <Users className="mr-2 h-5 w-5" />
                 SETUP HOST PROFILE
               </Button>
-            )}
+            )} */}
 
             {event.status === 'upcoming' && (
               <Button 
