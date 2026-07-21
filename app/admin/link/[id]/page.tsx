@@ -232,8 +232,8 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
               <LinkIcon className="h-4 w-4 text-primary" />
               Share this link
             </CardTitle>
-            <CardDescription className="text-xs">
-              Send this link for people to join online — no QR scan needed
+<CardDescription className="text-xs">
+              Send this link for people to join online — no sign up needed
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-3">

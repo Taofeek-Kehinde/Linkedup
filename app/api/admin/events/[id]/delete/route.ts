@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cleanupEventStorage } from '@/lib/utils/cleanup-event-storage'
 
 export async function POST(
   req: Request,
@@ -34,7 +35,10 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // “End” immediately before deletion
+  // Clean up all selfie/avatar videos from storage first (frees up space)
+  const { deletedFiles } = await cleanupEventStorage(id)
+
+  // "End" immediately before deletion
   const now = new Date().toISOString()
 
   const { error: endErr } = await supabase
@@ -59,8 +63,8 @@ export async function POST(
 
   if (deleteErr) {
     // Event is already ended; allow UI to proceed.
-    return NextResponse.json({ ok: true, ended: true, deleteFailed: true }, { status: 200 })
+    return NextResponse.json({ ok: true, ended: true, deleteFailed: true, cleanedFiles: deletedFiles }, { status: 200 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, cleanedFiles: deletedFiles })
 }
