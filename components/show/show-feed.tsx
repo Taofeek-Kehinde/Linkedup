@@ -49,7 +49,8 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>('')
 
   const [showChats, setShowChats] = useState(false)
-  const [chats, setChats] = useState<Chat[]>([])
+const [chats, setChats] = useState<Chat[]>([])
+  const [chatsWithMessages, setChatsWithMessages] = useState<Set<string>>(new Set())
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   const [unreadCount, setUnreadCount] = useState(0)
@@ -222,12 +223,26 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
       .or(`user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}`)
       .eq('is_active', true)
 
-    setChats(
-      (data || []).filter((chat) => {
-        const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
-        return !blockedPartnerIds.has(partnerId)
-      })
-    )
+    const myChats = (data || []).filter((chat) => {
+      const partnerId = chat.user1_id === currentUser.id ? chat.user2_id : chat.user1_id
+      return !blockedPartnerIds.has(partnerId)
+    })
+
+    setChats(myChats)
+
+    // Check which chats have at least one message
+    const chatIds = myChats.map(c => c.id)
+    if (chatIds.length > 0) {
+      const { data: msgData } = await supabase
+        .from('messages')
+        .select('chat_id')
+        .in('chat_id', chatIds)
+      
+      const chatsWithMsgIds = new Set((msgData || []).map(m => m.chat_id))
+      setChatsWithMessages(chatsWithMsgIds)
+    } else {
+      setChatsWithMessages(new Set())
+    }
   }, [event.id, currentUser.id])
 
   useEffect(() => {
@@ -640,7 +655,7 @@ export function ShowFeed({ event, currentUser }: ShowFeedProps) {
             }}
           >
             <MessageCircle className="h-5 w-5" />
-            <span className="text-[10px] font-medium leading-tight">Message</span>
+            <span className="text-[10px] font-medium leading-tight">{chatsWithMessages.size > 0 ? `${chatsWithMessages.size} Chat` : 'Chat'}</span>
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background" />
             )}
