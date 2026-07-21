@@ -222,7 +222,7 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
               </Badge>
               <span className="text-xs text-muted-foreground">({users.length} joined)</span>
             </div>
-          </div>
+</div>
         </div>
 
         {/* Link Card - Share the join link (NO QR code) */}
@@ -283,18 +283,18 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
 
         {/* Action Buttons */}
         <div className="space-y-3">
+          {/* Peep & Pass button commented out */}
+          {/*
           <Button variant="default" className="w-full" size="lg" onClick={async () => {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) { router.push('/admin'); return }
-
             let { data: hostUser } = await supabase
               .from('event_users')
               .select('*')
               .eq('event_id', event.id)
               .eq('auth_user_id', user.id)
               .single()
-
             if (!hostUser) {
               const { generateVibeKey } = await import('@/lib/utils/generate-vibe-key')
               const { generateSessionToken } = await import('@/lib/utils/generate-session-token')
@@ -304,44 +304,34 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
               const { data: newHost, error } = await supabase
                 .from('event_users')
                 .insert({
-                  event_id: event.id,
-                  username,
-                  vibe_key: vibeKey,
-                  session_token: sessionToken,
-                  auth_user_id: user.id,
-                  is_vip: true,
-                  is_active: true,
+                  event_id: event.id, username, vibe_key: vibeKey, session_token: sessionToken,
+                  auth_user_id: user.id, is_vip: true, is_active: true,
                 })
                 .select()
                 .single()
               if (error || !newHost) { router.push('/admin/dashboard'); return }
               hostUser = newHost
             }
-
             const { setLocalSession } = await import('@/lib/utils/session')
             setLocalSession({
-              eventUserId: hostUser.id,
-              eventId: event.id,
-              username: hostUser.username,
-              vibeKey: hostUser.vibe_key,
-              sessionToken: hostUser.session_token,
-              selfieUrl: hostUser.selfie_url,
-              isUpgraded: Boolean(hostUser.is_upgraded),
-              isVip: Boolean(hostUser.is_vip),
-              isActive: hostUser.is_active ?? true,
+              eventUserId: hostUser.id, eventId: event.id, username: hostUser.username,
+              vibeKey: hostUser.vibe_key, sessionToken: hostUser.session_token, selfieUrl: hostUser.selfie_url,
+              isUpgraded: Boolean(hostUser.is_upgraded), isVip: Boolean(hostUser.is_vip), isActive: hostUser.is_active ?? true,
             })
             router.push(`/show/${event.id}`)
           }}>
             <Eye className="mr-2 h-5 w-5" />
             Peep &amp; Pass
           </Button>
-  
-{/* i have updated the code it need to save the new things i just did  */}
+          */}
 
-          {/* <Button variant="outline" className="w-full" size="lg" onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}>
+          {/* Host Setup button commented out */}
+          {/*
+          <Button variant="outline" className="w-full" size="lg" onClick={() => router.push(`/admin/event/${event.id}/host-setup`)}>
             <ExternalLink className="mr-2 h-5 w-5" />
             Host Setup
-          </Button> */}
+          </Button>
+          */}
 
           <Button variant="destructive" className="w-full" size="lg" disabled={isUpdating} onClick={async () => {
             const ok = window.confirm('Delete this event now? This will end the event and log everyone out.')
@@ -417,4 +407,3 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
     </main>
   )
 }
-

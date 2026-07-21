@@ -173,19 +173,8 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="relative aspect-square bg-black">
-              {/* Live camera preview */}
-              {!capturedVideoUrl && !isRecording && (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`absolute inset-0 w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-                />
-              )}
-              
-{/* Live camera preview DURING recording */}
-              {!capturedVideoUrl && isRecording && (
+{/* Live camera preview (before and during recording - single element to preserve stream) */}
+              {!capturedVideoUrl && (
                 <video
                   ref={videoRef}
                   autoPlay
