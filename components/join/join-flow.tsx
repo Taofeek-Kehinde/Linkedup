@@ -277,6 +277,14 @@ export function JoinFlow() {
       // Create user
       const sessionToken = generateSessionToken()
       const supabase = createClient()
+
+      // Count existing participants to determine VIP status (first 15 get VIP)
+      const { count: existingCount, error: countError } = await supabase
+        .from('event_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', event.id)
+
+      const isFirstFifteen = !countError && existingCount !== null && existingCount < 15
       
       const { data: newUser, error } = await supabase
         .from('event_users')
@@ -287,6 +295,7 @@ export function JoinFlow() {
           selfie_url: selfieUrl,
           session_token: sessionToken,
           is_upgraded: false,
+          is_vip: isFirstFifteen,
           is_active: true,
           location: selectedLocation || null,
         })
@@ -309,7 +318,7 @@ export function JoinFlow() {
         sessionToken: newUser.session_token,
         selfieUrl: newUser.selfie_url,
         isUpgraded: false,
-        isVip: false,
+        isVip: newUser.is_vip ?? false,
         isActive: newUser.is_active ?? true,
       }
       setLocalSession(session)
