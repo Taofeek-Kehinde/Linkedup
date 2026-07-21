@@ -23,5 +23,4 @@
 - [x] Change 'selfie.jpg' to use video file extension in FormData
 
 ### Step 5: Build check
-- [ ] Verify build passes
-
+- [x] Build passes successfully
