@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./mydashbaord.module.css";
 
@@ -12,18 +12,52 @@ type ActiveEvent = {
   show_name: string | null;
 };
 
-export default function MyDashboard() {
+type TimerMode = "preGate" | "gateOpen" | "postGate";
 
-  function secondsUntilNext3pm() {
-    const now = new Date();
-    const target = new Date(now);
-    target.setHours(15, 0, 0, 0);
-    if (now >= target) target.setDate(target.getDate() + 1);
-    return Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
+// ── helpers ──────────────────────────────────────────────────────
+function computeSecondsUntil3pm(): number {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(15, 0, 0, 0);
+  if (now >= target) target.setDate(target.getDate() + 1);
+  return Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
+}
+
+function computeSecondsUntilGateCloses(): number {
+  const now = new Date();
+  const close = new Date(now);
+  close.setHours(15, 15, 0, 0);
+  return Math.max(0, Math.floor((close.getTime() - now.getTime()) / 1000));
+}
+
+function getTimerMode(): TimerMode {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+
+  const totalSeconds = h * 3600 + m * 60 + s;
+  const gateStart = 15 * 3600;           // 15:00:00
+  const gateEnd   = 15 * 3600 + 15 * 60; // 15:15:00
+
+  if (totalSeconds < gateStart) return "preGate";
+  if (totalSeconds < gateEnd)   return "gateOpen";
+  return "postGate";
+}
+
+function computeRemaining(mode: TimerMode): number {
+  switch (mode) {
+    case "preGate":  return computeSecondsUntil3pm();
+    case "gateOpen": return computeSecondsUntilGateCloses();
+    case "postGate": return computeSecondsUntil3pm();
   }
+}
 
+// ── Component ────────────────────────────────────────────────────
+export default function MyDashboard() {
   const [remaining, setRemaining] = useState<number>(0);
   const [mounted, setMounted] = useState<boolean>(false);
+  const [timerMode, setTimerMode] = useState<TimerMode>("postGate");
   const [hasEvent, setHasEvent] = useState<boolean>(false);
   const [isCheckingEvent, setIsCheckingEvent] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -34,30 +68,29 @@ export default function MyDashboard() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── tick every second ─────────────────────────────────────────
   useEffect(() => {
-    const initial = secondsUntilNext3pm();
-    setRemaining(initial);
+    const tick = () => {
+      const mode = getTimerMode();
+      setTimerMode(mode);
+      setRemaining(computeRemaining(mode));
+    };
+
+    tick();                // initial
     setMounted(true);
 
-    const id = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) return secondsUntilNext3pm();
-        return prev - 1;
-      });
-    }, 1000);
-
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
+  // ── check for existing event ──────────────────────────────────
   useEffect(() => {
     let ignore = false;
 
     async function checkEvent() {
       try {
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
         if (!user || ignore) {
           if (!ignore) {
@@ -93,143 +126,177 @@ export default function MyDashboard() {
 
     return () => {
       ignore = true;
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-      if (copyTimerRef.current) {
-        clearTimeout(copyTimerRef.current);
-      }
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     };
   }, []);
+
+  // ── computed display ──────────────────────────────────────────
+  const isGateOpen = timerMode === "gateOpen";
 
   const hrs = Math.floor(remaining / 3600);
   const mins = Math.floor((remaining % 3600) / 60);
   const secs = remaining % 60;
-  const timeStr = mounted
-    ? `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  const mmss = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  const hhmmss = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+  const timerDisplay = mounted
+    ? timerMode === "gateOpen"
+      ? "TAP TO JOIN"
+      : timerMode === "preGate"
+        ? hhmmss
+        : hhmmss
     : "00:00:00";
 
-  const handleShowupClick = () => {
-    if (!hasEvent || !activeEvent) {
-      setToastMessage("There is no any active event");
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-      toastTimerRef.current = setTimeout(() => {
-        setToastMessage("");
-      }, 1800);
+  const gateLabel =
+    timerMode === "gateOpen"
+      ? `OPEN ${mmss}`
+      : timerMode === "preGate"
+        ? "PULLUP"
+        : "GATE CLOSED";
+
+  // ── handlers ──────────────────────────────────────────────────
+  const handleCreateLink = useCallback(() => {
+    if (!isGateOpen) {
+      setToastMessage("Gate is closed! Opens daily at 3:00 PM – 3:15 PM");
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToastMessage(""), 2500);
       return;
     }
+    window.location.href = "/admin/link/create";
+  }, [isGateOpen]);
 
+  const handleCreateQR = useCallback(() => {
+    if (!isGateOpen) {
+      setToastMessage("Gate is closed! Opens daily at 3:00 PM – 3:15 PM");
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToastMessage(""), 2500);
+      return;
+    }
     window.location.href = "/admin/create";
-  };
+  }, [isGateOpen]);
 
-  const closeInvite = () => {
+  const closeInvite = useCallback(() => {
     setIsInviteOpen(false);
     setCopyLabel("Copy link");
-  };
+  }, []);
 
-  const copyInviteLink = async () => {
+  const copyInviteLink = useCallback(async () => {
     if (!joinLink) return;
-
     try {
       await navigator.clipboard.writeText(joinLink);
       setCopyLabel("Copied!");
-      if (copyTimerRef.current) {
-        clearTimeout(copyTimerRef.current);
-      }
-      copyTimerRef.current = setTimeout(() => {
-        setCopyLabel("Copy link");
-      }, 1600);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopyLabel("Copy link"), 1600);
     } catch {
       setCopyLabel("Copy failed");
     }
-  };
+  }, [joinLink]);
 
+  // ── render ────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
+      {/* Toast */}
       {toastMessage ? <div className={styles.toast}>{toastMessage}</div> : null}
 
+      {/* Background */}
       <div className={styles.background}>
         <div className={styles.blurOverlay} />
       </div>
 
-      {isInviteOpen ? (
+      {/* Invite modal */}
+      {isInviteOpen && (
         <div className={styles.inviteOverlay} onClick={closeInvite}>
-          <div className={styles.inviteCard} onClick={(event) => event.stopPropagation()}>
-            <button className={styles.inviteClose} onClick={closeInvite} type="button" aria-label="Close invite">
-              ×
-            </button>
-
+          <div className={styles.inviteCard} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.inviteClose} onClick={closeInvite} type="button" aria-label="Close invite">&times;</button>
             <div className={styles.inviteBadge}>Live invite</div>
             <h3 className={styles.inviteTitle}>Share this event</h3>
             <p className={styles.inviteSubtitle}>Send a polished invite so people can join instantly.</p>
-
             <div className={styles.inviteField}>
               <span className={styles.inviteLabel}>Location</span>
               <div className={styles.inviteValue}>{activeEvent?.location || "Location coming soon"}</div>
             </div>
-
             <div className={styles.inviteField}>
               <span className={styles.inviteLabel}>Join link</span>
               <div className={styles.inviteLinkBox}>
                 <span className={styles.inviteLinkText}>{joinLink || "Preparing link..."}</span>
               </div>
             </div>
-
-            <button className={styles.copyButton} onClick={copyInviteLink} type="button">
-              {copyLabel}
-            </button>
+            <button className={styles.copyButton} onClick={copyInviteLink} type="button">{copyLabel}</button>
           </div>
         </div>
-      ) : null}
+      )}
 
+      {/* Glass card */}
       <div className={styles.glassCard}>
         <div className={styles.glassReflection}></div>
 
+        {/* Timer */}
         <div className={styles.timerOuter}>
           <div className={styles.timerGlow}></div>
-          <div className={styles.timerInner}>
+          <div
+            className={styles.timerInner}
+            style={
+              isGateOpen
+                ? { background: "radial-gradient(circle at top, #22c55e, #16a34a, #15803d)" }
+                : undefined
+            }
+          >
             <div className={styles.timerText}>
-              <span className={styles.timerValue}>{timeStr}</span>
-              <span className={styles.timerLabel}>PULLUP</span>
+              <span
+                className={styles.timerValue}
+                style={isGateOpen ? { color: "#fff", textShadow: "0 0 20px rgba(34,197,94,0.8)" } : undefined}
+              >
+                {timerDisplay}
+              </span>
+              <span className={styles.timerLabel} style={isGateOpen ? { color: "#bbf7d0" } : undefined}>
+                {gateLabel}
+              </span>
+              {timerMode === "preGate" && (
+                <span className={styles.timerLabel} style={{ fontSize: "10px", opacity: 0.6 }}>
+                  Opens 3:00 PM
+                </span>
+              )}
+              {timerMode === "postGate" && (
+                <span className={styles.timerLabel} style={{ fontSize: "10px", opacity: 0.6 }}>
+                  Next gate 3:00 PM
+                </span>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Description */}
         <div className={styles.descriptionWrap}>
-          <div className={styles.description}>
-            No Contact. No Profile. Just Talk.
-          </div>
+          <div className={styles.description}>No Contact. No Profile. Just Talk.</div>
           <span className={styles.descriptionDivider} />
         </div>
 
+        {/* Buttons */}
         <div className={styles.buttonRow}>
           <button
-            className={styles.circleButton}
-            onClick={() => {
-              window.location.href = "/admin/link/create";
-            }}
+            className={`${styles.circleButton} ${!isGateOpen ? styles.disabledButton : ""}`}
+            onClick={handleCreateLink}
             type="button"
+            title={isGateOpen ? "Create Link Event" : "Gate opens at 3:00 PM"}
           >
             <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
           </button>
-
           <button
-            className={styles.circleButton}
-            onClick={() => {
-              window.location.href = "/admin/create";
-            }}
+            className={`${styles.circleButton} ${!isGateOpen ? styles.disabledButton : ""}`}
+            onClick={handleCreateQR}
             type="button"
+            title={isGateOpen ? "Create QR Event" : "Gate opens at 3:00 PM"}
           >
             <Image src="/user.png" alt="User" width={70} height={70} className="object-contain" />
           </button>
         </div>
       </div>
 
+      {/* Footer */}
       <div className={styles.footer}>
         <h1>Talking Stage</h1>
-        <p>© MIKI - +2349033666403</p>
+        <p>&copy; MIKI - +2349033666403</p>
       </div>
     </div>
   );
