@@ -184,14 +184,14 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
                 />
               )}
               
-              {/* Live camera preview DURING recording */}
+{/* Live camera preview DURING recording */}
               {!capturedVideoUrl && isRecording && (
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                  className={`absolute inset-0 w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                 />
               )}
               

@@ -38,26 +38,26 @@ export async function POST(request: NextRequest) {
     // Determine file extension from content type
     const contentType = file.type?.toLowerCase() || ''
     let extension = '.jpg'
-    if (contentType.includes('webm')) extension = '.webm'
-    else if (contentType.includes('mp4') || contentType.includes('mp42')) extension = '.mp4'
+    if (contentType.startsWith('video/')) extension = '.webm'
 
     const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}${extension}`
 
     // Safety guards: selfies can crash/timeout servers if we buffer too much.
     // User uploads are expected to be <= 20MB for videos.
     const maxBytes = 20 * 1024 * 1024 // 20MB
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'video/webm',
-      'video/mp4',
-    ]
-    const isAllowedType = allowedTypes.includes(contentType)
+
+    // Check if content type is an allowed type (use startsWith to handle codecs like video/webm;codecs=vp9)
+    const isAllowedType = (
+      contentType.startsWith('image/jpeg') ||
+      contentType.startsWith('image/png') ||
+      contentType.startsWith('image/webp') ||
+      contentType.startsWith('video/webm') ||
+      contentType.startsWith('video/mp4')
+    )
 
     if (!isAllowedType) {
       return NextResponse.json(
-        { error: 'Unsupported file type. Use JPG, PNG, WEBP, WebM video, or MP4 video.' },
+        { error: `Unsupported file type: ${contentType}. Use JPG, PNG, WEBP, WebM video, or MP4 video.` },
         { status: 415 }
       )
     }
@@ -127,5 +127,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
