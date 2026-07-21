@@ -254,7 +254,9 @@ export function JoinFlow() {
       // Upload selfie if provided
       if (blob) {
         const formData = new FormData()
-        formData.append('file', blob, 'selfie.jpg')
+        // Determine video extension from blob type
+        const videoExt = blob.type.includes('webm') ? 'webm' : 'mp4'
+        formData.append('file', blob, `clip.${videoExt}`)
         formData.append('eventId', event.id)
         formData.append('username', username)
 
@@ -268,7 +270,7 @@ export function JoinFlow() {
           selfieUrl = url
         } else {
           const uploadErrorText = await uploadRes.text()
-          setError(`Failed to upload photo: ${uploadErrorText || uploadRes.statusText}`)
+          setError(`Failed to upload video: ${uploadErrorText || uploadRes.statusText}`)
           setIsLoading(false)
           return
         }

@@ -15,8 +15,9 @@ interface SelfieImageProps {
 }
 
 export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieImageProps) {
-  const [imageFailed, setImageFailed] = useState(false)
+  const [mediaFailed, setMediaFailed] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [isVideo, setIsVideo] = useState(false)
 
   const raw = (src || '').trim()
 
@@ -40,14 +41,18 @@ export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieIm
   })()
 
   useEffect(() => {
-    setImageFailed(false)
+    setMediaFailed(false)
     setRetryCount(0)
+    // Determine if the URL points to a video file
+    if (selfieUrl) {
+      const ext = selfieUrl.split('.').pop()?.toLowerCase() || ''
+      setIsVideo(['webm', 'mp4'].includes(ext))
+    } else {
+      setIsVideo(false)
+    }
   }, [selfieUrl])
 
-  const showFallback = imageFailed || selfieUrl.length === 0
-  const retryUrl = selfieUrl
-    ? `${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}`
-    : ''
+  const showFallback = mediaFailed || selfieUrl.length === 0
 
   if (showFallback) {
     return (
@@ -62,9 +67,25 @@ export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieIm
     )
   }
 
+  // Render video element for video files
+  if (isVideo) {
+    return (
+      <video
+        src={selfieUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className={className || 'w-full h-full object-cover'}
+        onError={() => setMediaFailed(true)}
+      />
+    )
+  }
+
+  // Render image element for photos (fallback for older profiles)
   return (
     <img
-      src={retryUrl}
+      src={`${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}`}
       alt={alt}
       className={className || 'w-full h-full object-cover'}
       loading="lazy"
@@ -74,8 +95,7 @@ export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieIm
           setRetryCount(1)
           return
         }
-
-        setImageFailed(true)
+        setMediaFailed(true)
       }}
     />
   )

@@ -4,7 +4,9 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { Camera, ArrowLeft, RotateCcw, Check, X } from 'lucide-react'
+import { Camera, ArrowLeft, RotateCcw, Check, Video, VideoOff } from 'lucide-react'
+
+const RECORD_DURATION = 3 // seconds
 
 interface SelfieCaptureProps {
   username: string
@@ -16,42 +18,47 @@ interface SelfieCaptureProps {
 
 export function SelfieCapture({ username, onCapture, onBack, isLoading, error }: SelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const previewVideoRef = useRef<HTMLVideoElement>(null)
   
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [countdown, setCountdown] = useState(RECORD_DURATION)
+  const [capturedVideoUrl, setCapturedVideoUrl] = useState<string | null>(null)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
 
   const startCamera = useCallback(async () => {
-  if (streamRef.current) return 
+    if (streamRef.current) return
 
-  try {
-    setCameraError(null)
+    try {
+      setCameraError(null)
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode,
-        width: { ideal: 640 },
-        height: { ideal: 640 },
-      },
-      audio: false,
-    })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode,
+          width: { ideal: 640 },
+          height: { ideal: 640 },
+        },
+        audio: true,
+      })
 
-    streamRef.current = stream
+      streamRef.current = stream
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream
-      await videoRef.current.play().catch(() => {}) 
-      setCameraActive(true)
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+        setCameraActive(true)
+      }
+    } catch (err) {
+      console.error('Camera error:', err)
+      setCameraError('Could not access camera. Please allow camera access and try again.')
+      setCameraActive(false)
     }
-  } catch (err) {
-    console.error('Camera error:', err)
-    setCameraError('Could not access camera. Please allow camera access and try again.')
-    setCameraActive(false)
-  }
-}, [facingMode])
+  }, [facingMode])
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -66,70 +73,99 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
     return () => stopCamera()
   }, [startCamera, stopCamera])
 
-  function capturePhoto() {
-    if (!videoRef.current || !canvasRef.current) return
+  function startRecording() {
+    if (!streamRef.current || !videoRef.current) return
 
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    chunksRef.current = []
+    setCountdown(RECORD_DURATION)
+    setIsRecording(true)
 
-    // Set canvas size to a square crop from center
-    const size = Math.min(video.videoWidth, video.videoHeight)
-    canvas.width = size
-    canvas.height = size
+    // Use webm for broad browser support
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+      ? 'video/webm;codecs=vp8'
+      : 'video/webm'
 
-    // Calculate crop position (center)
-    const offsetX = (video.videoWidth - size) / 2
-    const offsetY = (video.videoHeight - size) / 2
+    const recorder = new MediaRecorder(streamRef.current, { mimeType })
+    mediaRecorderRef.current = recorder
 
-    // Mirror if using front camera
-    if (facingMode === 'user') {
-      ctx.scale(-1, 1)
-      ctx.drawImage(video, offsetX, offsetY, size, size, -size, 0, size, size)
-    } else {
-      ctx.drawImage(video, offsetX, offsetY, size, size, 0, 0, size, size)
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data)
     }
 
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8)
-    setCapturedImage(imageDataUrl)
-    stopCamera()
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      setCapturedVideoUrl(url)
+      setIsRecording(false)
+      stopCamera()
+    }
+
+    recorder.start(100) // collect data every 100ms
+
+    // Countdown timer
+    let remaining = RECORD_DURATION
+    timerRef.current = setInterval(() => {
+      remaining--
+      setCountdown(remaining)
+      if (remaining <= 0) {
+        if (timerRef.current) clearInterval(timerRef.current)
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop()
+        }
+      }
+    }, 1000)
   }
 
-  function retakePhoto() {
-    setCapturedImage(null)
+  function retakeVideo() {
+    if (capturedVideoUrl) {
+      URL.revokeObjectURL(capturedVideoUrl)
+    }
+    setCapturedVideoUrl(null)
+    setCountdown(RECORD_DURATION)
     startCamera()
   }
 
-  function confirmPhoto() {
-    if (!canvasRef.current) return
-    
-    console.log('Confirm photo clicked')
-    canvasRef.current.toBlob((blob) => {
-      console.log('Blob generated:', blob)
-      onCapture(blob)
-    }, 'image/jpeg', 0.8)
+  function confirmVideo() {
+    if (!capturedVideoUrl) return
+
+    // Get the blob from the video element or recreate from chunks
+    // We stored chunks in chunksRef - use those to create the final blob
+    if (chunksRef.current.length === 0) return
+
+    const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm'
+    const finalBlob = new Blob(chunksRef.current, { type: mimeType })
+    onCapture(finalBlob)
   }
 
-function toggleCamera() {
+  function toggleCamera() {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user')
   }
 
   // Effect to restart camera when facing mode changes
   useEffect(() => {
-    if (!capturedImage) {
+    if (!capturedVideoUrl) {
       startCamera()
     }
-  }, [facingMode, capturedImage, startCamera])
+  }, [facingMode, capturedVideoUrl, startCamera])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (capturedVideoUrl) URL.revokeObjectURL(capturedVideoUrl)
+    }
+  }, [capturedVideoUrl])
 
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">Take a Selfie</h1>
+          <h1 className="text-2xl font-bold text-foreground">Record a 3s Clip</h1>
           <p className="text-sm text-muted-foreground">
-            Help others recognize you, <span className="text-primary">{username}</span>
+            Introduce yourself, <span className="text-primary">{username}</span>
           </p>
         </div>
 
@@ -137,8 +173,8 @@ function toggleCamera() {
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
           <CardContent className="p-0">
             <div className="relative aspect-square bg-black">
-              {/* Video preview */}
-              {!capturedImage && (
+              {/* Live camera preview */}
+              {!capturedVideoUrl && !isRecording && (
                 <video
                   ref={videoRef}
                   autoPlay
@@ -148,17 +184,48 @@ function toggleCamera() {
                 />
               )}
               
-              {/* Captured image */}
-              {capturedImage && (
-                <img
-                  src={capturedImage}
-                  alt="Captured selfie"
+              {/* Live camera preview DURING recording */}
+              {!capturedVideoUrl && isRecording && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                />
+              )}
+              
+              {/* Captured video preview */}
+              {capturedVideoUrl && (
+                <video
+                  ref={previewVideoRef}
+                  src={capturedVideoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               )}
 
+              {/* Recording countdown overlay */}
+              {isRecording && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                  <div className="bg-red-600 text-white text-lg font-bold px-5 py-2 rounded-full animate-pulse">
+                    Recording... {countdown}s
+                  </div>
+                </div>
+              )}
+
+              {/* Recording red dot */}
+              {isRecording && (
+                <div className="absolute top-4 right-4 z-10">
+                  <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
+                </div>
+              )}
+
               {/* Camera error */}
-              {cameraError && !capturedImage && (
+              {cameraError && !capturedVideoUrl && !isRecording && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                   <Camera className="w-12 h-12 text-muted-foreground mb-4" />
                   <p className="text-sm text-muted-foreground">{cameraError}</p>
@@ -169,21 +236,21 @@ function toggleCamera() {
               )}
 
               {/* Camera loading */}
-              {!cameraActive && !cameraError && !capturedImage && (
+              {!cameraActive && !cameraError && !capturedVideoUrl && !isRecording && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Spinner className="w-8 h-8" />
                 </div>
               )}
 
               {/* Face guide overlay */}
-              {cameraActive && !capturedImage && (
+              {cameraActive && !capturedVideoUrl && !isRecording && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-48 h-48 rounded-full border-2 border-dashed border-white/30" />
                 </div>
               )}
 
-              {/* Camera controls */}
-              {cameraActive && !capturedImage && (
+              {/* Camera controls - only when not recording and no captured video */}
+              {cameraActive && !capturedVideoUrl && !isRecording && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <Button
                     size="icon"
@@ -195,10 +262,10 @@ function toggleCamera() {
                   </Button>
                   <Button
                     size="icon"
-                    className="rounded-full w-16 h-16 bg-white hover:bg-white/90"
-                    onClick={capturePhoto}
+                    className="rounded-full w-16 h-16 bg-red-500 hover:bg-red-600"
+                    onClick={startRecording}
                   >
-                    <Camera className="w-7 h-7 text-black" />
+                    <Video className="w-7 h-7 text-white" />
                   </Button>
                   <div className="w-12 h-12" /> {/* Spacer */}
                 </div>
@@ -207,27 +274,24 @@ function toggleCamera() {
           </CardContent>
         </Card>
 
-        {/* Hidden canvas for capture */}
-        <canvas ref={canvasRef} className="hidden" />
-
-{/* Actions - Selfie is now REQUIRED */}
-        {capturedImage ? (
+        {/* Actions */}
+        {capturedVideoUrl ? (
           <div className="space-y-3">
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" onClick={retakePhoto} disabled={isLoading}>
+              <Button variant="outline" onClick={retakeVideo} disabled={isLoading}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Retake
               </Button>
-              <Button onClick={confirmPhoto} disabled={isLoading}>
+              <Button onClick={confirmVideo} disabled={isLoading}>
                 {isLoading ? (
                   <Spinner className="mr-2" />
                 ) : (
                   <Check className="mr-2 h-4 w-4" />
                 )}
-                Use Photo
+                Use Video
               </Button>
             </div>
           </div>
@@ -236,9 +300,11 @@ function toggleCamera() {
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
-            <p className="text-sm text-muted-foreground text-center">
-              Take a photo to continue
-            </p>
+            {!isRecording && (
+              <p className="text-sm text-muted-foreground text-center">
+                Record a 3-second video to continue
+              </p>
+            )}
           </div>
         )}
 

@@ -34,21 +34,30 @@ export async function POST(request: NextRequest) {
       .substring(0, 40) || 'user'
 
     const timestamp = Date.now()
-    const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}.jpg`
+
+    // Determine file extension from content type
+    const contentType = file.type?.toLowerCase() || ''
+    let extension = '.jpg'
+    if (contentType.includes('webm')) extension = '.webm'
+    else if (contentType.includes('mp4') || contentType.includes('mp42')) extension = '.mp4'
+
+    const filename = `selfies/${eventId}/${sanitizedUsername}-${timestamp}${extension}`
 
     // Safety guards: selfies can crash/timeout servers if we buffer too much.
-    // User uploads are expected to be <= 10MB.
-    const maxBytes = 10 * 1024 * 1024 // 10MB
-    const contentType = file.type?.toLowerCase() || ''
-    const isAllowedType = [
+    // User uploads are expected to be <= 20MB for videos.
+    const maxBytes = 20 * 1024 * 1024 // 20MB
+    const allowedTypes = [
       'image/jpeg',
       'image/png',
       'image/webp',
-    ].includes(contentType)
+      'video/webm',
+      'video/mp4',
+    ]
+    const isAllowedType = allowedTypes.includes(contentType)
 
     if (!isAllowedType) {
       return NextResponse.json(
-        { error: 'Unsupported file type. Use JPG, PNG, or WEBP.' },
+        { error: 'Unsupported file type. Use JPG, PNG, WEBP, WebM video, or MP4 video.' },
         { status: 415 }
       )
     }
@@ -56,7 +65,7 @@ export async function POST(request: NextRequest) {
     // `File.size` is bytes.
     if (typeof file.size === 'number' && file.size > maxBytes) {
       return NextResponse.json(
-        { error: 'File too large. Max size is 10MB.' },
+        { error: 'File too large. Max size is 20MB.' },
         { status: 413 }
       )
     }
