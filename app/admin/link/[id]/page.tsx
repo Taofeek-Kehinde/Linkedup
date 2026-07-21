@@ -243,15 +243,29 @@ export default function LinkDetailsPage({ params }: { params: Promise<{ id: stri
                 <p className="text-2xl font-mono font-bold text-primary">{timeRemaining}</p>
               </div>
             )}
-            <div className="w-full bg-background/80 border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wide">Join Link</p>
-              <p className="text-sm text-primary break-all font-mono">{joinUrl}</p>
-            </div>
-            <Button onClick={copyLink} className="w-full" variant="secondary">
+<Button onClick={copyLink}
+              className="w-full font-bold text-base tracking-wide py-6"
+              variant="default"
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                boxShadow: copied
+                  ? '0 0 20px rgba(99, 102, 241, 0.6), 0 0 40px rgba(139, 92, 246, 0.3)'
+                  : '0 0 15px rgba(99, 102, 241, 0.4), 0 0 30px rgba(139, 92, 246, 0.2)',
+                border: 'none',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,0.8), 0 0 60px rgba(139,92,246,0.5)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = copied
+                  ? '0 0 20px rgba(99,102,241,0.6), 0 0 40px rgba(139,92,246,0.3)'
+                  : '0 0 15px rgba(99,102,241,0.4), 0 0 30px rgba(139,92,246,0.2)'
+              }}>
               {copied ? (
-                <><Check className="mr-2 h-4 w-4" /> Copied!</>
+                <><Check className="mr-2 h-5 w-5" /> Copied!</>
               ) : (
-                <><Copy className="mr-2 h-4 w-4" /> Copy Link</>
+                <><Copy className="mr-2 h-5 w-5" /> Copy Link</>
               )}
             </Button>
           </CardContent>
