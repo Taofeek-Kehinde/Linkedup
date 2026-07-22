@@ -14,6 +14,9 @@ type ActiveEvent = {
 
 type TimerMode = "preGate" | "gateOpen" | "postGate";
 
+// ── configuration ────────────────────────────────────────────────
+const TIKTOK_URL = "https://www.tiktok.com"; // change to your TikTok page
+
 // ── helpers ──────────────────────────────────────────────────────
 function computeSecondsUntil3pm(): number {
   const now = new Date();
@@ -143,38 +146,22 @@ export default function MyDashboard() {
   const timerDisplay = mounted
     ? timerMode === "gateOpen"
       ? "TAP TO JOIN"
-      : timerMode === "preGate"
-        ? hhmmss
-        : hhmmss
+      : hhmmss
     : "00:00:00";
 
-  const gateLabel =
-    timerMode === "gateOpen"
-      ? `OPEN ${mmss}`
-      : timerMode === "preGate"
-        ? "PULLUP"
-        : "GATE CLOSED";
-
   // ── handlers ──────────────────────────────────────────────────
-  const handleCreateLink = useCallback(() => {
-    if (!isGateOpen) {
-      setToastMessage("Gate is closed! Opens daily at 3:00 PM – 3:15 PM");
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => setToastMessage(""), 2500);
-      return;
-    }
-    window.location.href = "/admin/link/create";
+  const handleTimerClick = useCallback(() => {
+    if (!isGateOpen) return;              // only clickable during gate window
+    window.open(TIKTOK_URL, "_blank", "noopener,noreferrer");
   }, [isGateOpen]);
+
+  const handleCreateLink = useCallback(() => {
+    window.location.href = "/admin/link/create";
+  }, []);
 
   const handleCreateQR = useCallback(() => {
-    if (!isGateOpen) {
-      setToastMessage("Gate is closed! Opens daily at 3:00 PM – 3:15 PM");
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => setToastMessage(""), 2500);
-      return;
-    }
     window.location.href = "/admin/create";
-  }, [isGateOpen]);
+  }, []);
 
   const closeInvite = useCallback(() => {
     setIsInviteOpen(false);
@@ -231,8 +218,15 @@ export default function MyDashboard() {
       <div className={styles.glassCard}>
         <div className={styles.glassReflection}></div>
 
-        {/* Timer */}
-        <div className={styles.timerOuter}>
+        {/* Timer – Clickable only during 3:00–3:15 */}
+        <div
+          className={`${styles.timerOuter} ${isGateOpen ? styles.timerClickable : ""}`}
+          onClick={handleTimerClick}
+          role="button"
+          tabIndex={isGateOpen ? 0 : -1}
+          aria-label={isGateOpen ? "Tap to join on TikTok" : "Gate timer"}
+          onKeyDown={(e) => { if (e.key === "Enter" && isGateOpen) handleTimerClick(); }}
+        >
           <div className={styles.timerGlow}></div>
           <div
             className={styles.timerInner}
@@ -249,19 +243,6 @@ export default function MyDashboard() {
               >
                 {timerDisplay}
               </span>
-              <span className={styles.timerLabel} style={isGateOpen ? { color: "#bbf7d0" } : undefined}>
-                {gateLabel}
-              </span>
-              {timerMode === "preGate" && (
-                <span className={styles.timerLabel} style={{ fontSize: "10px", opacity: 0.6 }}>
-                  Opens 3:00 PM
-                </span>
-              )}
-              {timerMode === "postGate" && (
-                <span className={styles.timerLabel} style={{ fontSize: "10px", opacity: 0.6 }}>
-                  Next gate 3:00 PM
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -272,21 +253,21 @@ export default function MyDashboard() {
           <span className={styles.descriptionDivider} />
         </div>
 
-        {/* Buttons */}
+        {/* Buttons – Always accessible */}
         <div className={styles.buttonRow}>
           <button
-            className={`${styles.circleButton} ${!isGateOpen ? styles.disabledButton : ""}`}
+            className={styles.circleButton}
             onClick={handleCreateLink}
             type="button"
-            title={isGateOpen ? "Create Link Event" : "Gate opens at 3:00 PM"}
+            title="Create Link Event"
           >
             <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
           </button>
           <button
-            className={`${styles.circleButton} ${!isGateOpen ? styles.disabledButton : ""}`}
+            className={styles.circleButton}
             onClick={handleCreateQR}
             type="button"
-            title={isGateOpen ? "Create QR Event" : "Gate opens at 3:00 PM"}
+            title="Create QR Event"
           >
             <Image src="/user.png" alt="User" width={70} height={70} className="object-contain" />
           </button>

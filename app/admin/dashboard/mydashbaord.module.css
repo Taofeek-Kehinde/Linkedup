@@ -110,6 +110,10 @@ body {
   margin-top: 0;
 }
 
+.timerClickable {
+  cursor: pointer;
+}
+
 .timerGlow {
   position: absolute;
   width: 175px;
