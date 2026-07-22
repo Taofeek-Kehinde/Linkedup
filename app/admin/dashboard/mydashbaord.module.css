@@ -333,39 +333,21 @@ body {
 }
 
 .circleButton {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.45);
-  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(220,220,220,0.82));
+  background: none;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: 0.35s ease;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.95), inset 0 -2px 4px rgba(0,0,0,0.12);
-  backdrop-filter: blur(12px);
-}
-
-.disabledButton {
-  cursor: not-allowed;
-  opacity: 0.72;
-  transform: none !important;
-}
-
-.disabledButton:hover {
-  transform: none !important;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.95), inset 0 -2px 4px rgba(0,0,0,0.12);
-}
-
-.circleButton svg {
-  color: #111;
-  transition: 0.35s;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  padding: 0;
+  margin: 0;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 .circleButton:hover {
   transform: translateY(-4px) scale(1.06);
-  box-shadow: 0 20px 45px rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,1);
+  opacity: 0.85;
 }
 
 .circleButton:active {
