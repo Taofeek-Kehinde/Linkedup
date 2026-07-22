@@ -261,7 +261,7 @@ export default function MyDashboard() {
             type="button"
             title="Create Link Event"
           >
-            <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
+            <Image src="/link.png" alt="Link" width={130} height={130} className="object-contain" />
           </button>
           <button
             className={styles.circleButton}
@@ -269,7 +269,7 @@ export default function MyDashboard() {
             type="button"
             title="Create QR Event"
           >
-            <Image src="/user.png" alt="User" width={70} height={70} className="object-contain" />
+            <Image src="/user.png" alt="User" width={130} height={130} className="object-contain" />
           </button>
         </div>
       </div>
