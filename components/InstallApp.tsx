@@ -79,7 +79,7 @@ export default function InstallApp() {
         if (isIOS) {
 
             alert(
-                "Install alkingStage:\n\n" +
+                "Install TalkingStage:\n\n" +
                 "1. Tap Share button\n" +
                 "2. Select Add to Home Screen\n" +
                 "3. Tap Add"
@@ -113,7 +113,7 @@ export default function InstallApp() {
         if (result.outcome === "accepted") {
 
             console.log(
-                "alkingStage installed"
+                "TalkingStage installed"
             );
 
         }
@@ -155,7 +155,7 @@ export default function InstallApp() {
         >
             <Download size={20} />
 
-            Install alkingStage
+            Install TalkingStage
         </button>
     );
 
