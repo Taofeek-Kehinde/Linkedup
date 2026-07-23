@@ -441,6 +441,31 @@ body {
   text-shadow: 0 2px 2px rgba(255,255,255,0.45);
 }
 
+.footerLinks {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.footerLink {
+  font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+  font-weight: 600;
+  color: #1a1a2e;
+  text-decoration: none;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.7);
+  transition: background 0.2s ease;
+  letter-spacing: 0.5px;
+}
+
+.footerLink:hover {
+  background: rgba(255,255,255,0.8);
+}
+
 @keyframes shine {
   0% {
     transform: translateX(-150%) rotate(-18deg);

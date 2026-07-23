@@ -14,7 +14,7 @@ type ActiveEvent = {
 type TimerMode = "preGate" | "gateOpen" | "postGate";
 
 // ── configuration ────────────────────────────────────────────────
-const TIKTOK_URL = "https://vm.tiktok.com/ZS9r59EeLmR6h-8wpkw/"; // change to your TikTok page
+const DEFAULT_PULLUP_URL = "https://vm.tiktok.com/ZS9r59EeLmR6h-8wpkw/"; // fallback TikTok page
 
 // ── helpers ──────────────────────────────────────────────────────
 function computeSecondsUntil3pm(): number {
@@ -144,15 +144,24 @@ export default function MyDashboard() {
 
   const timerDisplay = mounted
     ? timerMode === "gateOpen"
-      ? "TAP TO JOIN"
+      ? "TAP TO PULLUP"
       : hhmmss
     : "00:00:00";
 
   // ── handlers ──────────────────────────────────────────────────
+  const getPullupUrl = useCallback((): string => {
+    if (typeof window !== 'undefined') {
+      const customUrl = localStorage.getItem('pullup_url')
+      if (customUrl) return customUrl
+    }
+    return DEFAULT_PULLUP_URL
+  }, [])
+
   const handleTimerClick = useCallback(() => {
     if (!isGateOpen) return;              // only clickable during gate window
-    window.open(TIKTOK_URL, "_blank", "noopener,noreferrer");
-  }, [isGateOpen]);
+    const url = getPullupUrl()
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [isGateOpen, getPullupUrl]);
 
   const handleCreateLink = useCallback(() => {
     window.location.href = "/admin/link/create";
@@ -223,7 +232,7 @@ export default function MyDashboard() {
           onClick={handleTimerClick}
           role="button"
           tabIndex={isGateOpen ? 0 : -1}
-          aria-label={isGateOpen ? "Tap to join on TikTok" : "Gate timer"}
+          aria-label={isGateOpen ? "Tap to pullup" : "Gate timer"}
           onKeyDown={(e) => { if (e.key === "Enter" && isGateOpen) handleTimerClick(); }}
         >
           <div className={styles.timerGlow}></div>
@@ -277,6 +286,9 @@ export default function MyDashboard() {
       <div className={styles.footer}>
         <h1>TalkingStage</h1>
         <p>&copy; MIKI - +2349033666403</p>
+        <div className={styles.footerLinks}>
+          <a href="/admin/pullup" className={styles.footerLink}>Pullup Settings</a>
+        </div>
       </div>
     </div>
   );
