@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Sparkles, MapPin, Check, Plus, Edit3, Trash2, CalendarDays } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Check, Plus, Edit3, Trash2, CalendarDays, Clock } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -179,6 +179,20 @@ export default function CreateEventPage() {
                 />
               </div>
 
+              {/* Duration - Fixed at 15 hours */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Duration
+                </Label>
+                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                  <span className="text-sm font-medium">15 hours (fixed)</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Events last exactly 15 hours. The timer starts when you start the event.
+                </p>
+              </div>
+
               {/* Error Warning Display */}
               {error && (
                 <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
@@ -199,6 +213,17 @@ export default function CreateEventPage() {
                 )}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Info */}
+        <Card className="border-border/50 bg-card/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">What you get:</strong>
+              <br />
+              A QR code will be generated after creating, for your event attendees to scan at the event.
+            </p>
           </CardContent>
         </Card>
       </div>
