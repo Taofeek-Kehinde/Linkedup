@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./mydashbaord.module.css";
@@ -256,27 +255,27 @@ export default function MyDashboard() {
         {/* Buttons – Always accessible */}
         <div className={styles.buttonRow}>
           <button
-            className={styles.circleButton}
+            className={styles.actionButton}
             onClick={handleCreateLink}
             type="button"
             title="Create Link Event"
           >
-            <Image src="/link.png" alt="Link" width={70} height={70} className="object-contain" />
+            LINK
           </button>
           <button
-            className={styles.circleButton}
+            className={styles.actionButton}
             onClick={handleCreateQR}
             type="button"
             title="Create QR Event"
           >
-            <Image src="/user.png" alt="User" width={70} height={70} className="object-contain" />
+            SHOWUP
           </button>
         </div>
       </div>
 
       {/* Footer */}
       <div className={styles.footer}>
-        <h1>Talking Stage</h1>
+<h1>alkingStage</h1>
         <p>&copy; MIKI - +2349033666403</p>
       </div>
     </div>

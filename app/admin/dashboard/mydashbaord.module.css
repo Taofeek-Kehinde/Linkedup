@@ -332,25 +332,29 @@ body {
   box-shadow: 0 12px 28px rgba(17, 24, 39, 0.24);
 }
 
-.circleButton {
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.actionButton {
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(220,220,220,0.82));
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #111;
   cursor: pointer;
-  transition: transform 0.35s ease, opacity 0.35s ease;
-  padding: 0;
-  margin: 0;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.95), inset 0 -2px 4px rgba(0,0,0,0.12);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
 }
 
-.circleButton:hover {
+.actionButton:hover {
   transform: translateY(-4px) scale(1.06);
-  opacity: 0.85;
+  box-shadow: 0 20px 45px rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,1);
 }
 
-.circleButton:active {
+.actionButton:active {
   transform: scale(0.95);
 }
 
@@ -534,11 +538,6 @@ body {
     margin-bottom: 4px;
   }
 
-  .circleButton {
-    width: 58px;
-    height: 58px;
-  }
-
   .footer {
     padding: 8px 20px 0 20px;
     margin-top: 10px;
@@ -605,11 +604,6 @@ body {
     padding: 0 10px;
     margin-top: 12px;
     margin-bottom: 2px;
-  }
-
-  .circleButton {
-    width: 54px;
-    height: 54px;
   }
 
   .footer {

@@ -1,4 +1,4 @@
-"use client";
+    "use client";
 
 import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -79,7 +79,7 @@ export default function InstallApp() {
         if (isIOS) {
 
             alert(
-                "Install LinkedUp:\n\n" +
+                "Install alkingStage:\n\n" +
                 "1. Tap Share button\n" +
                 "2. Select Add to Home Screen\n" +
                 "3. Tap Add"
@@ -113,7 +113,7 @@ export default function InstallApp() {
         if (result.outcome === "accepted") {
 
             console.log(
-                "LinkedUp installed"
+                "alkingStage installed"
             );
 
         }
@@ -155,7 +155,7 @@ export default function InstallApp() {
         >
             <Download size={20} />
 
-            Install LinkedUp
+            Install alkingStage
         </button>
     );
 

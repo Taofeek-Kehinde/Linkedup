@@ -1,6 +1,6 @@
 {
-  "name": "LinkedUp - Connect at Events",
-  "short_name": "LinkedUp",
+  "name": "alkingStage - Connect at Events",
+  "short_name": "alkingStage",
   "description": "Real-time event-based social app. Join events and connect with people.",
   "start_url": "/",
   "display": "standalone",
