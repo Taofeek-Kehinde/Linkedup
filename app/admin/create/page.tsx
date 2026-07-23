@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Sparkles, MapPin, Clock, Check, Plus, Edit3, Trash2, CalendarDays } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Check, Plus, Edit3, Trash2, CalendarDays } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -78,7 +78,7 @@ export default function CreateEventPage() {
     const startedAt = isUpcoming ? null : now.toISOString()
     const endsAt = isUpcoming ? null : new Date(now.getTime() + 15 * 60 * 60 * 1000).toISOString()
 
-    const { data, error } = await supabase
+    const { data, error: dbError } = await supabase
       .from('events')
       .insert({
         event_code: eventCode,
@@ -94,8 +94,8 @@ export default function CreateEventPage() {
       .select()
       .single()
 
-    if (error) {
-      setError(error.message)
+    if (dbError) {
+      setError(dbError.message)
       setIsLoading(false)
       return
     }
@@ -124,11 +124,15 @@ export default function CreateEventPage() {
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
-</Link>
+          </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">CREATE FOR PHYSICAL EVENT/SHOWS</h1>
-      
-            <p className="text-sm text-muted-fore
+            <h1 className="text-2xl font-bold text-foreground">CREATE PHYSICAL EVENT</h1>
+            <p className="text-sm text-muted-foreground">Setup and host your live show.</p>
+          </div>
+        </div>
+
+        {/* Form Card */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -140,6 +144,7 @@ export default function CreateEventPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Event Name */}
               <div className="space-y-2">
                 <Label htmlFor="showName">Event Name</Label>
                 <Input
@@ -152,6 +157,7 @@ export default function CreateEventPage() {
                 />
               </div>
 
+              {/* Locations Management */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -168,12 +174,17 @@ export default function CreateEventPage() {
                             value={loc}
                             onChange={(e) => updateLocation(index, e.target.value)}
                             onBlur={() => setEditingIndex(null)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') setEditingIndex(null) }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                setEditingIndex(null)
+                              }
+                            }}
                             autoFocus
                             className="flex-1"
                           />
                         ) : (
-                          <span className="flex-1">{loc}</span>
+                          <span className="flex-1 text-sm">{loc}</span>
                         )}
                         <Button type="button" variant="ghost" size="icon" onClick={() => startEditing(index)} className="h-6 w-6">
                           <Edit3 className="h-3 w-3" />
@@ -189,16 +200,23 @@ export default function CreateEventPage() {
                       placeholder="e.g., San Francisco, CA"
                       value={newLocation}
                       onChange={(e) => setNewLocation(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') addLocation() }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addLocation()
+                        }
+                      }}
                       className="flex-1 bg-input"
                     />
                     <Button type="button" size="icon" onClick={addLocation} disabled={!newLocation.trim()} className="h-10 w-10">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                <p className="text-xs text-muted-foreground">Optional. Helps users filter who they see.</p>
+                  <p className="text-xs text-muted-foreground">Optional. Helps users filter who they see.</p>
+                </div>
               </div>
 
+              {/* Scheduled Start Time */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -207,45 +225,38 @@ export default function CreateEventPage() {
                 <Input
                   type="datetime-local"
                   value={scheduledStartAt ? toDateTimeLocal(scheduledStartAt) : ''}
-                  onChange={(e) => setScheduledStartAt(e.target.value ? new Date(e.target.value) : null)}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      // Fix native datetime-local string to Javascript Date object conversion
+                      setScheduledStartAt(new Date(e.target.value))
+                    } else {
+                      setScheduledStartAt(null)
+                    }
+                  }}
                   className="bg-input"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Optional. Choose any future start time. The event will stay upcoming until that time, then run for 15 hours.
-                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  Duration
-                </Label>
-                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                  <span className="text-sm font-medium">15 hours</span>
+              {/* Error Warning Display */}
+              {error && (
+                <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
                 </div>
-                <p className="text-xs text-muted-foreground">Every event lasts exactly 15 hours.</p>
-              </div>
+              )}
 
-              {error && (<p className="text-sm text-destructive">{error}</p>)}
-
-              <Button type="submit" className="w-full" disabled={isLoading || !showName.trim()}>
+              {/* Submit Buttons */}
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  <><Spinner className="mr-2" /> Creating...</>
+                  <span className="flex items-center gap-2">
+                    <Spinner className="h-4 w-4" /> Creating...
+                  </span>
                 ) : (
-                  <><Check className="mr-2 h-4 w-4" /> Create Event</>
+                  <span className="flex items-center gap-2">
+                    <Check className="h-4 w-4" /> Create Event
+                  </span>
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Info */}
-        <Card className="border-border/50 bg-card/30">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">What happens next?</strong><br />
-              After creating, you&apos;ll get a unique event code and QR code to share with attendees. They can join and start connecting!
-            </p>
           </CardContent>
         </Card>
       </div>
