@@ -286,9 +286,6 @@ export default function MyDashboard() {
       <div className={styles.footer}>
         <h1>TalkingStage</h1>
         <p>&copy; MIKI - +2349033666403</p>
-        <div className={styles.footerLinks}>
-          <a href="/admin/pullup" className={styles.footerLink}>Pullup Settings</a>
-        </div>
       </div>
     </div>
   );
