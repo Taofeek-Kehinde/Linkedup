@@ -109,7 +109,7 @@ export default function AdminPage() {
                   autoFocus
                 />
                 {passwordError && (
-                  <p className="text-sm text-red-400">Incorrect password. Try 1234</p>
+                  <p className="text-sm text-red-400">Wrong password</p>
                 )}
               </div>
               <Button onClick={handleUnlock} className="w-full bg-white text-black hover:bg-zinc-200">
