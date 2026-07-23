@@ -1,4 +1,4 @@
-'use client'
+ 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -157,65 +157,7 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              {/* Locations Management */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Locations
-                </Label>
-                <div className="space-y-2">
-                  {locations.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No locations added</p>
-                  ) : (
-                    locations.map((loc, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                        {editingIndex === index ? (
-                          <Input
-                            value={loc}
-                            onChange={(e) => updateLocation(index, e.target.value)}
-                            onBlur={() => setEditingIndex(null)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                setEditingIndex(null)
-                              }
-                            }}
-                            autoFocus
-                            className="flex-1"
-                          />
-                        ) : (
-                          <span className="flex-1 text-sm">{loc}</span>
-                        )}
-                        <Button type="button" variant="ghost" size="icon" onClick={() => startEditing(index)} className="h-6 w-6">
-                          <Edit3 className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteLocation(index)} className="h-6 w-6">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                  <div className="flex gap-1">
-                    <Input
-                      placeholder="e.g., San Francisco, CA"
-                      value={newLocation}
-                      onChange={(e) => setNewLocation(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addLocation()
-                        }
-                      }}
-                      className="flex-1 bg-input"
-                    />
-                    <Button type="button" size="icon" onClick={addLocation} disabled={!newLocation.trim()} className="h-10 w-10">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Optional. Helps users filter who they see.</p>
-                </div>
-              </div>
-
+              {/* Locations Management - Commented out */}
               {/* Scheduled Start Time */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">

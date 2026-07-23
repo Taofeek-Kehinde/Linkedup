@@ -258,9 +258,9 @@ export default function MyDashboard() {
             className={styles.actionButtonLink}
             onClick={handleCreateLink}
             type="button"
-            title="Create Link Event"
+            title="Create Linkup Event"
           >
-            LINK
+            LINKUP
           </button>
           <button
             className={styles.actionButtonShowup}
