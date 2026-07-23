@@ -358,6 +358,58 @@ body {
   transform: scale(0.95);
 }
 
+.actionButtonLink {
+  background: linear-gradient(180deg, #ef4444, #dc2626, #b91c1c);
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 12px 30px rgba(220,38,38,0.4), inset 0 2px 3px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+
+.actionButtonLink:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 20px 45px rgba(220,38,38,0.5), inset 0 2px 4px rgba(255,255,255,0.35);
+}
+
+.actionButtonLink:active {
+  transform: scale(0.95);
+}
+
+.actionButtonShowup {
+  background: linear-gradient(180deg, #22c55e, #16a34a, #15803d);
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 12px 30px rgba(22,163,74,0.4), inset 0 2px 3px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+
+.actionButtonShowup:hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 20px 45px rgba(22,163,74,0.5), inset 0 2px 4px rgba(255,255,255,0.35);
+}
+
+.actionButtonShowup:active {
+  transform: scale(0.95);
+}
+
 .footer {
   position: relative;
   text-align: center;

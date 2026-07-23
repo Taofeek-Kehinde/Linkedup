@@ -127,7 +127,7 @@ export default function CreateEventPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">CREATE PHYSICAL EVENT</h1>
-            <p className="text-sm text-muted-foreground">Setup and host your live show.</p>
+            <p className="text-sm text-muted-foreground">Generate a QR for your event attendees to scan at event.</p>
           </div>
         </div>
 

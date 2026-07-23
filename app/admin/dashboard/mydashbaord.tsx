@@ -14,7 +14,7 @@ type ActiveEvent = {
 type TimerMode = "preGate" | "gateOpen" | "postGate";
 
 // ── configuration ────────────────────────────────────────────────
-const TIKTOK_URL = "https://www.tiktok.com"; // change to your TikTok page
+const TIKTOK_URL = "https://vm.tiktok.com/ZS9r59EeLmR6h-8wpkw/"; // change to your TikTok page
 
 // ── helpers ──────────────────────────────────────────────────────
 function computeSecondsUntil3pm(): number {
@@ -255,7 +255,7 @@ export default function MyDashboard() {
         {/* Buttons – Always accessible */}
         <div className={styles.buttonRow}>
           <button
-            className={styles.actionButton}
+            className={styles.actionButtonLink}
             onClick={handleCreateLink}
             type="button"
             title="Create Link Event"
@@ -263,7 +263,7 @@ export default function MyDashboard() {
             LINK
           </button>
           <button
-            className={styles.actionButton}
+            className={styles.actionButtonShowup}
             onClick={handleCreateQR}
             type="button"
             title="Create QR Event"
@@ -275,7 +275,7 @@ export default function MyDashboard() {
 
       {/* Footer */}
       <div className={styles.footer}>
-<h1>alkingStage</h1>
+        <h1>TalkingStage</h1>
         <p>&copy; MIKI - +2349033666403</p>
       </div>
     </div>
