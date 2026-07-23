@@ -126,7 +126,8 @@ export default function CreateEventPage() {
             </Button>
 </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Create PEEP or PASS</h1>
+            <h1 className="text-2xl font-bold text-foreground">CREATE FOR PHYSICAL EVENT/SHOWS</h1>
+      
             <p className="text-sm text-muted-fore
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
