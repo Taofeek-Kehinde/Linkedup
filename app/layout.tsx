@@ -9,7 +9,7 @@ const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'alkingStage - Connect at Events',
+  title: 'TalkingStage - Connect at Events',
   description:
     'Real-time event-based social app. Join events, take selfies, and connect with people around you.',
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'alkingStage',
+    title: 'TalkingStage',
   },
 }
 
