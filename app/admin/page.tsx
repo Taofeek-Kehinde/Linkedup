@@ -102,9 +102,9 @@ export default function AdminPage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 overflow-hidden">
-            <img src="/logo.png" alt="LinkedUp" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="TalkingStage" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">LinkedUp</h1>
+          <h1 className="text-2xl font-bold text-foreground">TalkingStage</h1>
           <p className="text-muted-foreground text-center">Host Portal</p>
         </div>
 
