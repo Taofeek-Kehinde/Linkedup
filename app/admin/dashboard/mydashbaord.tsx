@@ -160,7 +160,30 @@ export default function MyDashboard() {
   const handleTimerClick = useCallback(() => {
     if (!isGateOpen) return;              // only clickable during gate window
     const url = getPullupUrl()
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (!url) return
+
+    // Attempt 1: window.open WITHOUT the "noopener" feature string so we can
+    // actually detect a blocked popup (window.open returns null when blocked).
+    // The old code passed "noopener,noreferrer" which always returns null,
+    // so a blocked popup was never detected or recovered from.
+    const opened = window.open(url, "_blank");
+    if (opened) return;
+
+    // Attempt 2: synthesize a real anchor click. Mobile Safari/Chrome and
+    // installed PWAs treat this as a genuine user gesture rather than a
+    // popup, so it opens reliably.
+    try {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } catch {
+      // Final fallback: navigate in the same tab.
+      window.location.href = url;
+    }
   }, [isGateOpen, getPullupUrl]);
 
   const handleCreateLink = useCallback(() => {
