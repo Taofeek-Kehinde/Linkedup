@@ -687,9 +687,9 @@ mediaRecorder.onstop = async () => {
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
-          if (prev >= 14) {
+          if (prev >= 2) {
             stopRecording()
-            return 15
+            return 3
           }
           return prev + 1
         })
@@ -747,9 +747,9 @@ mediaRecorder.onstop = async () => {
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
-          if (prev >= 14) {
+          if (prev >= 2) {
             stopRecording()
-            return 15
+            return 3
           }
           return prev + 1
         })
@@ -861,7 +861,7 @@ mediaRecorder.onstop = async () => {
           </div>
           <div className="text-center mt-4 space-y-2">
             <p className="text-white text-lg font-semibold">Recording video...</p>
-            <p className="text-white text-sm">Auto-send in {15 - recordingTime}s</p>
+            <p className="text-white text-sm">Auto-send in {3 - recordingTime}s</p>
           </div>
         </div>
       )}
@@ -1121,7 +1121,7 @@ mediaRecorder.onstop = async () => {
             size="icon"
             className="h-10 w-10 shrink-0"
             onClick={startVideoRecording}
-            title="Record video (15 seconds max)"
+            title="Record video (3 seconds max)"
           >
             <Video className="h-5 w-5" />
           </Button>
