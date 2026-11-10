@@ -417,6 +417,12 @@ export function JoinFlow() {
             <p className="text-sm text-muted-foreground">Joining</p>
             <h1 className="text-2xl font-bold text-foreground">{event?.show_name}</h1>
             <p className="text-sm font-mono text-primary">{event?.event_code}</p>
+            {event?.location && (
+              <p className="flex items-center justify-center gap-1.5 pt-1 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span>{event.location}</span>
+              </p>
+            )}
           </div>
 
           {/* Identity Card */}
@@ -540,6 +546,12 @@ export function JoinFlow() {
             <p className="text-sm text-muted-foreground">Joining</p>
             <h1 className="text-2xl font-bold text-foreground">{event?.show_name}</h1>
             <p className="text-sm font-mono text-primary">{event?.event_code}</p>
+            {event?.location && (
+              <p className="flex items-center justify-center gap-1.5 pt-1 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span>{event.location}</span>
+              </p>
+            )}
           </div>
 
           {/* Location Selection Card */}

@@ -44,7 +44,7 @@ export default function AdminPage() {
       return
     }
 
-    router.push('/admin/dashboard')
+    router.replace('/admin/dashboard')
   }
 
   async function handleSignup(e: React.FormEvent) {
@@ -70,8 +70,7 @@ export default function AdminPage() {
       email,
       password: signupPassword,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=%2Fadmin%2Fdashboard`,
       },
     })
 
@@ -93,7 +92,7 @@ export default function AdminPage() {
       return
     }
 
-    router.push('/admin/dashboard')
+    router.replace('/admin/dashboard')
   }
 
   return (

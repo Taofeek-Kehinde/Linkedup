@@ -21,6 +21,7 @@ export default function CreateEventPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [showName, setShowName] = useState('')
+  const [eventAddress, setEventAddress] = useState('')
   const [locations, setLocations] = useState<string[]>([])
   const [newLocation, setNewLocation] = useState('')
   const [scheduledStartAt, setScheduledStartAt] = useState<Date | null>(null)
@@ -83,6 +84,7 @@ export default function CreateEventPage() {
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
+        location: eventAddress.trim(),
         locations: locations,
         duration_hours: 15,
         scheduled_start_at: scheduledStartIso,
@@ -157,7 +159,24 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              {/* Locations Management - Commented out */}
+              <div className="space-y-2">
+                <Label htmlFor="eventAddress" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  Event address
+                </Label>
+                <Input
+                  id="eventAddress"
+                  placeholder="e.g., 12 Example Street, Lagos"
+                  value={eventAddress}
+                  onChange={(e) => setEventAddress(e.target.value)}
+                  required
+                  className="bg-input"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Attendees will see this address when they open the event link or scan its QR code.
+                </p>
+              </div>
+
               {/* Scheduled Start Time */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">

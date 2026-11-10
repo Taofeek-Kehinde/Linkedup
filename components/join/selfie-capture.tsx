@@ -212,7 +212,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
               <span aria-hidden="true">·</span>
               <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5 text-red-400" />Loops on replay</span>
               <span aria-hidden="true">·</span>
-              <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5 text-red-400" />24 hours</span>
+              <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5 text-red-400" />3 hours</span>
             </div>
           )}
         </div>
@@ -369,7 +369,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
         {variant === 'peep' && (
           <div className="flex items-center justify-center gap-2 text-center text-xs text-zinc-500">
             <Link2 className="h-3.5 w-3.5" />
-            Publish to get a private link that expires after 24 hours.
+            Publish to get a private link that expires after 3 hours.
           </div>
         )}
       </div>

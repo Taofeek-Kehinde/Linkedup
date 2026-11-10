@@ -110,9 +110,9 @@ export default function EventsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {liveEvents.map((event) => {
-              const location = event.locations?.length
+              const location = event.location || (event.locations?.length
                 ? event.locations.join(', ')
-                : event.location || 'Location coming soon'
+                : 'Location coming soon')
 
               return (
                 <Card key={event.id} className="border-border/50 bg-card/50 backdrop-blur-sm">

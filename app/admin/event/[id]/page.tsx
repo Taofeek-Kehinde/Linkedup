@@ -44,6 +44,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   const [upcomingCountdown, setUpcomingCountdown] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editShowName, setEditShowName] = useState('')
+  const [editAddress, setEditAddress] = useState('')
   const [editLocations, setEditLocations] = useState<string[]>([])
   const [editNewLocation, setEditNewLocation] = useState('')
   const [editScheduledStartAt, setEditScheduledStartAt] = useState<Date | null>(null)
@@ -373,6 +374,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       .from('events')
       .update({ 
         show_name: editShowName.trim(),
+        location: editAddress.trim() || null,
         locations: editLocations,
         scheduled_start_at: scheduledStartIso,
         duration_hours: parseInt(editDurationHours)
@@ -383,6 +385,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
       setEvent({ 
         ...event, 
         show_name: editShowName,
+        location: editAddress.trim() || null,
         locations: editLocations,
         scheduled_start_at: scheduledStartIso,
         duration_hours: parseInt(editDurationHours)
@@ -516,6 +519,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
               setIsEditing(!isEditing)
               if (!isEditing) {
                 setEditShowName(event.show_name)
+                setEditAddress(event.location || '')
                 setEditLocations(event.locations || [])
                 setEditScheduledStartAt(event.scheduled_start_at ? new Date(event.scheduled_start_at) : null)
                 setEditDurationHours(event.duration_hours.toString())
@@ -615,6 +619,16 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
             {isEditing ? (
               <>
                 <div className="space-y-2">
+                  <Label htmlFor="edit-event-address">Event address</Label>
+                  <Input
+                    id="edit-event-address"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    placeholder="Venue name and full address"
+                    className="bg-input"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>Locations</Label>
                   <div className="space-y-2">
                     {editLocations.length === 0 ? (
@@ -697,20 +711,22 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                     </span>
                     <span className="font-semibold text-foreground">{users.length}</span>
                   </div>
-                  {(event.locations && event.locations.length > 0) ? (
+                  {event.location && (
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-4 w-4" />
+                        Address
+                      </span>
+                      <span className="text-right font-semibold text-foreground">{event.location}</span>
+                    </div>
+                  )}
+                  {event.locations && event.locations.length > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4" />
                         Locations
                       </span>
                       <span className="font-semibold text-foreground max-w-[200px] truncate">{event.locations.join(', ')}</span>
-                    </div>
-                  ) : event.location && (
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                      </span>
-                      <span className="font-semibold text-foreground">{event.location}</span>
                     </div>
                   )}
                   {event.scheduled_start_at && (

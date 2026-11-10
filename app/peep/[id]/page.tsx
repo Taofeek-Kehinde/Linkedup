@@ -88,7 +88,7 @@ export default function PeepPage({ params }: PeepPageProps) {
             PEEP
           </CardTitle>
           <CardDescription className="text-zinc-400">
-            A 3-second looping video that disappears after 24 hours.
+            A 3-second looping video that disappears after 3 hours.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

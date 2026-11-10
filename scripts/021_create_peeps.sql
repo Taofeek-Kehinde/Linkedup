@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS public.peeps (
   owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   storage_path TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '3 hours')
 );
 
 ALTER TABLE public.peeps ALTER COLUMN owner_id DROP NOT NULL;

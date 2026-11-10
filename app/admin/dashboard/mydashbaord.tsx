@@ -180,7 +180,10 @@ export default function MyDashboard() {
 
         {/* Description */}
         <div className={styles.descriptionWrap}>
-          <div className={styles.description}>No Contact. No Profile. Just Talk.</div>
+          <div className={styles.descriptionTrack}>
+            <div className={styles.description}>REAL FACES at the MOMENT</div>
+            <div className={styles.description}>... No Filters. No Fakes. No History</div>
+          </div>
           <span className={styles.descriptionDivider} />
         </div>
 
@@ -213,7 +216,8 @@ export default function MyDashboard() {
         aria-label={pullupUrl ? "Open configured link" : "No redirect link configured"}
         title={pullupUrl ? "Open configured link" : "Set a redirect URL in the admin page"}
       >
-        00:00:00
+        <span className={styles.clockIndicator} aria-hidden="true" />
+        <span className={styles.clockValue}>00:00:00</span>
       </button>
 
       {/* Footer */}

@@ -444,6 +444,12 @@ const [chats, setChats] = useState<Chat[]>([])
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/50">
         <div className="flex flex-col items-center p-4">
           <h1 className="font-bold text-foreground text-center truncate max-w-full">{event.show_name}</h1>
+          {event.location && (
+            <p className="mt-1 flex max-w-full items-center gap-1 text-center text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{event.location}</span>
+            </p>
+          )}
           <div className="flex items-center justify-center mt-2 relative">
             <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border-2 border-primary/50 bg-primary/5 z-10">
               <Clock className="h-4 w-4 text-primary" />

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024
-const PEEP_LIFETIME_MS = 24 * 60 * 60 * 1000
+const PEEP_LIFETIME_MS = 3 * 60 * 60 * 1000
 
 export async function POST(request: NextRequest) {
   const contentLength = Number(request.headers.get('content-length'))
