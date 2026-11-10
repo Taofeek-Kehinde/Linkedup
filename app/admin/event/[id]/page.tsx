@@ -23,7 +23,8 @@ import {
   CalendarDays,
   Save,
   Download,
-  RefreshCw
+  RefreshCw,
+  Copy
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback } from 'react'
@@ -451,33 +452,22 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  function copyCode() {
+  async function copyJoinLink() {
     if (!event) return
-    navigator.clipboard.writeText(event.event_code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    toast({
-      title: 'Copied!',
-      description: 'Event code copied to clipboard.'
-    })
-  }
-
-  async function shareEvent() {
-    if (!event) return
-    const url = `${window.location.origin}/join?code=${event.event_code}`
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: event.show_name,
-          text: `Join ${event.show_name} on LinkedUp!`,
-          url,
-        })
-      } catch {}
-    } else {
-      navigator.clipboard.writeText(url)
+    try {
+      await navigator.clipboard.writeText(joinUrl)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      window.setTimeout(() => setCopied(false), 2000)
+      toast({
+        title: 'Copied!',
+        description: 'Event link copied to clipboard.'
+      })
+    } catch {
+      toast({
+        title: 'Unable to copy link',
+        description: 'Please copy the event link from the field.',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -490,6 +480,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
   }
 
   const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code || ''}`
+  const qrJoinUrl = `${joinUrl}${joinUrl.includes('?') ? '&' : '?'}source=qr`
 
   return (
     <main className="min-h-dvh p-4 pb-24">
@@ -551,7 +542,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
               <div className="bg-white p-4 rounded-xl">
                 <QRCodeCanvas
                   ref={qrRef}
-                  value={joinUrl}
+                  value={qrJoinUrl}
                   size={200}
                   level="H"
                   includeMargin={false}
@@ -570,6 +561,28 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border/50 bg-card/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-foreground">Shareable Event Link</CardTitle>
+            <CardDescription>
+              Share this link with attendees so they can join your event.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              aria-label="Shareable event link"
+              readOnly
+              value={joinUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              className="bg-input"
+            />
+            <Button className="w-full" variant="outline" onClick={copyJoinLink}>
+              <Copy className="mr-2 h-4 w-4" />
+              {copied ? 'Link Copied' : 'Copy Event Link'}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Status & Timer */}
         {event.status === 'live' && timeRemaining && (

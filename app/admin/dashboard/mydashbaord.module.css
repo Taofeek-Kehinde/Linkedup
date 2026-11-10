@@ -108,10 +108,15 @@ body {
   box-shadow: 0 20px 40px rgba(0,0,0,0.28), inset 0 4px 6px rgba(255,255,255,1), inset 0 -5px 8px rgba(150,150,150,0.35);
   animation: ringFloat 5s ease-in-out infinite;
   margin-top: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
 }
 
-.timerClickable {
-  cursor: pointer;
+.timerOuter:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 6px;
 }
 
 .timerGlow {
@@ -410,6 +415,31 @@ body {
 
 .actionButtonShowup:active {
   transform: scale(0.95);
+}
+
+.clockDisplay {
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ff1f1f;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 3px rgba(255, 0, 0, 0.45);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.clockDisplay:not(:disabled) {
+  cursor: pointer;
+}
+
+.clockConfigured {
+  color: #22c55e;
+  text-shadow: 0 1px 3px rgba(34, 197, 94, 0.45);
 }
 
 .footer {

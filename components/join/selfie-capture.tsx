@@ -4,19 +4,20 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { Camera, ArrowLeft, RotateCcw, Check, Video, VideoOff } from 'lucide-react'
+import { Camera, ArrowLeft, RotateCcw, Check, Video, Clock3, Link2 } from 'lucide-react'
 
 const RECORD_DURATION = 3 // seconds
 
 interface SelfieCaptureProps {
-  username: string
+  variant?: 'default' | 'peep'
+  username?: string
   onCapture: (blob: Blob | null) => void
   onBack: () => void
   isLoading: boolean
   error: string | null
 }
 
-export function SelfieCapture({ username, onCapture, onBack, isLoading, error }: SelfieCaptureProps) {
+export function SelfieCapture({ variant = 'default', username, onCapture, onBack, isLoading, error }: SelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -36,13 +37,21 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
 
     try {
       setCameraError(null)
+      const videoConstraints: MediaTrackConstraints = variant === 'peep'
+        ? {
+            facingMode,
+            width: { ideal: 480, max: 480 },
+            height: { ideal: 480, max: 480 },
+            frameRate: { ideal: 20, max: 24 },
+          }
+        : {
+            facingMode,
+            width: { ideal: 640 },
+            height: { ideal: 640 },
+          }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 640 },
-          height: { ideal: 640 },
-        },
+        video: videoConstraints,
         audio: true,
       })
 
@@ -58,7 +67,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
       setCameraError('Could not access camera. Please allow camera access and try again.')
       setCameraActive(false)
     }
-  }, [facingMode])
+  }, [facingMode, variant])
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -87,7 +96,13 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
       ? 'video/webm;codecs=vp8'
       : 'video/webm'
 
-    const recorder = new MediaRecorder(streamRef.current, { mimeType })
+    const recorderOptions: MediaRecorderOptions = { mimeType }
+    if (variant === 'peep') {
+      recorderOptions.videoBitsPerSecond = 250_000
+      recorderOptions.audioBitsPerSecond = 32_000
+    }
+
+    const recorder = new MediaRecorder(streamRef.current, recorderOptions)
     mediaRecorderRef.current = recorder
 
     recorder.ondataavailable = (e) => {
@@ -159,20 +174,67 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
   }, [capturedVideoUrl])
 
   return (
-    <main className="min-h-dvh flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <main className={variant === 'peep'
+      ? 'relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-zinc-950 p-4 text-white'
+      : 'min-h-dvh flex flex-col items-center justify-center p-4'}
+    >
+      {variant === 'peep' && (
+        <>
+          <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-red-600/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-rose-500/10 blur-3xl" />
+        </>
+      )}
+      <div className={`relative z-10 w-full ${variant === 'peep' ? 'max-w-2xl space-y-7' : 'max-w-md space-y-6'}`}>
+        {variant === 'peep' && (
+          <Button variant="ghost" onClick={onBack} disabled={isLoading} className="text-zinc-400 hover:bg-white/5 hover:text-white">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+        )}
         {/* Header */}
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">Record a 3s Clip</h1>
-          <p className="text-sm text-muted-foreground">
-            Introduce yourself, <span className="text-primary">{username}</span>
+        <div className="space-y-3 text-center">
+          {variant === 'peep' && (
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10">
+              <Video className="h-7 w-7 text-red-400" />
+            </div>
+          )}
+          <h1 className={`font-semibold tracking-tight ${variant === 'peep' ? 'text-3xl sm:text-4xl' : 'text-2xl text-foreground'}`}>
+            {variant === 'peep' ? 'Create a Peep' : 'Record a 3s Clip'}
+          </h1>
+          <p className={`text-sm ${variant === 'peep' ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+            {username
+              ? <>Introduce yourself, <span className="text-primary">{username}</span></>
+              : 'Record a quick selfie video, then share it with anyone.'}
           </p>
+          {variant === 'peep' && (
+            <div className="mx-auto flex max-w-sm items-center justify-center gap-2 text-xs text-zinc-500">
+              <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5 text-red-400" />3 seconds</span>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5 text-red-400" />Loops on replay</span>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5 text-red-400" />24 hours</span>
+            </div>
+          )}
         </div>
 
         {/* Camera Card */}
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
+        <Card className={variant === 'peep'
+          ? 'overflow-hidden rounded-3xl border-white/10 bg-zinc-900/70 text-white shadow-2xl shadow-black/30 backdrop-blur-xl'
+          : 'border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden'}
+        >
+          {variant === 'peep' && (
+            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-white/5 px-5 py-4">
+              <div>
+                <CardTitle className="text-sm font-medium text-white">Camera preview</CardTitle>
+                <CardDescription className="mt-1 text-xs text-zinc-500">Your video is not shared until you publish.</CardDescription>
+              </div>
+              <span className="rounded-full border border-red-400/20 bg-red-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-red-300">
+                00:03 max
+              </span>
+            </CardHeader>
+          )}
           <CardContent className="p-0">
-            <div className="relative aspect-square bg-black">
+            <div className={`relative aspect-square bg-black ${variant === 'peep' ? 'sm:aspect-[4/3]' : ''}`}>
 {/* Live camera preview (before and during recording - single element to preserve stream) */}
               {!capturedVideoUrl && (
                 <video
@@ -180,7 +242,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                  className={`absolute inset-0 h-full w-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                 />
               )}
               
@@ -193,7 +255,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
                   loop
                   muted
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
 
@@ -218,7 +280,7 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                   <Camera className="w-12 h-12 text-muted-foreground mb-4" />
                   <p className="text-sm text-muted-foreground">{cameraError}</p>
-                  <Button variant="outline" className="mt-4" onClick={startCamera}>
+                  <Button variant="outline" className={`mt-4 ${variant === 'peep' ? 'border-white/15 bg-white/5 text-white hover:bg-white/10' : ''}`} onClick={startCamera}>
                     Try Again
                   </Button>
                 </div>
@@ -244,14 +306,14 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="rounded-full w-12 h-12 bg-white/10 backdrop-blur-sm hover:bg-white/20"
+                    className={`h-12 w-12 rounded-full backdrop-blur-sm ${variant === 'peep' ? 'bg-black/40 hover:bg-black/60' : 'bg-white/10 hover:bg-white/20'}`}
                     onClick={toggleCamera}
                   >
                     <RotateCcw className="w-5 h-5 text-white" />
                   </Button>
                   <Button
                     size="icon"
-                    className="rounded-full w-16 h-16 bg-red-500 hover:bg-red-600"
+                    className={`h-16 w-16 rounded-full bg-red-500 hover:bg-red-600 ${variant === 'peep' ? 'shadow-lg shadow-red-950/50 ring-4 ring-red-500/15' : ''}`}
                     onClick={startRecording}
                   >
                     <Video className="w-7 h-7 text-white" />
@@ -267,43 +329,49 @@ export function SelfieCapture({ username, onCapture, onBack, isLoading, error }:
         {capturedVideoUrl ? (
           <div className="space-y-3">
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className={`text-center text-sm ${variant === 'peep' ? 'text-red-300' : 'text-destructive'}`} role="alert">{error}</p>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" onClick={retakeVideo} disabled={isLoading}>
+              <Button variant="outline" onClick={retakeVideo} disabled={isLoading} className={variant === 'peep' ? 'border-white/10 bg-white/5 text-white hover:bg-white/10' : ''}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Retake
               </Button>
-              <Button onClick={confirmVideo} disabled={isLoading}>
+              <Button onClick={confirmVideo} disabled={isLoading} className={variant === 'peep' ? 'bg-red-600 text-white hover:bg-red-500' : ''}>
                 {isLoading ? (
                   <Spinner className="mr-2" />
                 ) : (
                   <Check className="mr-2 h-4 w-4" />
                 )}
-                Use Video
+                {variant === 'peep' ? 'Publish Peep' : 'Use Video'}
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className={`text-center text-sm ${variant === 'peep' ? 'text-red-300' : 'text-destructive'}`} role="alert">{error}</p>
             )}
             {!isRecording && (
-              <p className="text-sm text-muted-foreground text-center">
-                Record a 3-second video to continue
+              <p className={`text-center text-sm ${variant === 'peep' ? 'text-zinc-500' : 'text-muted-foreground'}`}>
+                {variant === 'peep' ? 'Tap the red button when you are ready to record.' : 'Record a 3-second video to continue'}
               </p>
             )}
           </div>
         )}
 
         {/* Back button */}
-        <div className="text-center">
+        {variant !== 'peep' && <div className="text-center">
           <Button variant="ghost" className="text-muted-foreground" onClick={onBack} disabled={isLoading}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-        </div>
+        </div>}
+        {variant === 'peep' && (
+          <div className="flex items-center justify-center gap-2 text-center text-xs text-zinc-500">
+            <Link2 className="h-3.5 w-3.5" />
+            Publish to get a private link that expires after 24 hours.
+          </div>
+        )}
       </div>
     </main>
   )

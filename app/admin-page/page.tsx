@@ -7,8 +7,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Lock, Save, ExternalLink, Trash2 } from 'lucide-react'
 
-const ADMIN_PASSWORD = '1234'
-
 export default function AdminPage() {
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [password, setPassword] = useState('')
@@ -20,60 +18,88 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('pullup_url')
-    if (stored) {
-      setUrl(stored)
-      setSavedUrl(stored)
-    }
+    let cancelled = false
+    fetch('/api/admin/pullup-url', { cache: 'no-store' })
+      .then(async (response) => {
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Could not load saved URL.')
+        if (!cancelled) {
+          setUrl(result.url || '')
+          setSavedUrl(result.url || '')
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : 'Could not load saved URL.')
+        }
+      })
+
+    return () => { cancelled = true }
   }, [])
 
-  function handleUnlock() {
-    if (password === ADMIN_PASSWORD) {
+  async function handleUnlock() {
+    setError(null)
+    try {
+      const response = await fetch('/api/admin/pullup-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', password }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not verify admin password.')
       setIsUnlocked(true)
       setPasswordError(false)
-    } else {
+    } catch (unlockError) {
       setPasswordError(true)
+      setError(unlockError instanceof Error ? unlockError.message : 'Could not verify admin password.')
     }
   }
 
-  function isValidUrl(str: string) {
+  function normalizeUrl(value: string) {
+    const candidate = value.trim()
+    const withProtocol = /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`
+    const parsed = new URL(withProtocol)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('Please enter a valid HTTP or HTTPS URL.')
+    }
+    return parsed.href
+  }
+
+  async function handleSave() {
     try {
-      new URL(str)
-      return true
-    } catch {
-      return false
+      const finalUrl = normalizeUrl(url)
+      const response = await fetch('/api/admin/pullup-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', password, url: finalUrl }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not save URL.')
+      setSavedUrl(result.url)
+      setUrl(result.url)
+      setIsSaved(true)
+      setError(null)
+      window.setTimeout(() => setIsSaved(false), 2000)
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not save URL.')
     }
   }
 
-  function handleSave() {
-    if (!url.trim()) {
-      setError('Please enter a URL')
-      return
+  async function handleReset() {
+    try {
+      const response = await fetch('/api/admin/pullup-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', password }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not clear URL.')
+      setUrl('')
+      setSavedUrl('')
+      setError(null)
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : 'Could not clear URL.')
     }
-
-    let finalUrl = url.trim()
-    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-      finalUrl = 'https://' + finalUrl
-    }
-
-    if (!isValidUrl(finalUrl)) {
-      setError('Please enter a valid URL')
-      return
-    }
-
-    localStorage.setItem('pullup_url', finalUrl)
-    setSavedUrl(finalUrl)
-    setUrl(finalUrl)
-    setIsSaved(true)
-    setError(null)
-    setTimeout(() => setIsSaved(false), 2000)
-  }
-
-  function handleReset() {
-    localStorage.removeItem('pullup_url')
-    setUrl('')
-    setSavedUrl('')
-    setError(null)
   }
 
   // Lock screen
@@ -109,7 +135,7 @@ export default function AdminPage() {
                   autoFocus
                 />
                 {passwordError && (
-                  <p className="text-sm text-red-400">Wrong password</p>
+                  <p className="text-sm text-red-400">{error || 'Wrong password'}</p>
                 )}
               </div>
               <Button onClick={handleUnlock} className="w-full bg-white text-black hover:bg-zinc-200">
@@ -147,7 +173,7 @@ export default function AdminPage() {
                 autoFocus
               />
               <p className="text-xs text-zinc-500">
-                When users tap TAP TO PULLUP (3:00-3:15), they&apos;ll be redirected here.
+                Saving a valid link turns the dashboard clock green. Tapping the clock opens this URL.
               </p>
             </div>
 
@@ -186,4 +212,3 @@ export default function AdminPage() {
     </main>
   )
 }
-

@@ -25,6 +25,7 @@ export function JoinFlow() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialCode = searchParams.get('code') || ''
+  const joinedViaQr = searchParams.get('source') === 'qr'
   
   const [step, setStep] = useState<Step>('code')
   const [isLoading, setIsLoading] = useState(false)
@@ -110,6 +111,22 @@ export function JoinFlow() {
         .single()
 
       if (!userError && eventUser) {
+        if (joinedViaQr) {
+          const { error: vipError } = await supabase
+            .from('event_users')
+            .update({ joined_via_qr: true, is_vip: true })
+            .eq('id', eventUser.id)
+            .eq('session_token', existingSession.sessionToken)
+
+          if (vipError) {
+            setError('Could not apply the QR join badge. Please try scanning again.')
+            setIsLoading(false)
+            return
+          }
+
+          setLocalSession({ ...existingSession, isVip: true })
+        }
+
         // Session is valid! Auto-rejoin the event
         setIsLoading(false)
         router.push(`/show/${event.id}`)
@@ -280,14 +297,6 @@ export function JoinFlow() {
       const sessionToken = generateSessionToken()
       const supabase = createClient()
 
-      // Count existing participants to determine VIP status (first 15 get VIP)
-      const { count: existingCount, error: countError } = await supabase
-        .from('event_users')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', event.id)
-
-      const isFirstFifteen = !countError && existingCount !== null && existingCount < 15
-      
       const { data: newUser, error } = await supabase
         .from('event_users')
         .insert({
@@ -296,8 +305,8 @@ export function JoinFlow() {
           vibe_key: vibeKey,
           selfie_url: selfieUrl,
           session_token: sessionToken,
+          joined_via_qr: joinedViaQr,
           is_upgraded: false,
-          is_vip: isFirstFifteen,
           is_active: true,
           location: selectedLocation || null,
         })

@@ -364,7 +364,7 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
     )
   }
 
-  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code}`
+  const joinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${event.event_code}&source=qr`
 
   return (
     <main className="min-h-dvh bg-gradient-to-br from-stone-950 via-black to-stone-950 p-4 pb-24">

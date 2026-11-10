@@ -127,7 +127,7 @@ export default function CreateEventPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">CREATE PHYSICAL EVENT</h1>
-            <p className="text-sm text-muted-foreground">Generate a QR for your event attendees to scan at event.</p>
+            <p className="text-sm text-muted-foreground">Create an event with both a QR code and a shareable join link.</p>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ export default function CreateEventPage() {
               Event Details
             </CardTitle>
             <CardDescription>
-              Enter the details for your event. A unique QR code will be generated automatically.
+              Enter the details for your event. A unique QR code and shareable link will be generated automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -222,7 +222,7 @@ export default function CreateEventPage() {
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">What you get:</strong>
               <br />
-              A QR code will be generated after creating, for your event attendees to scan at the event.
+              After creating your event, you can share its link or let attendees scan its QR code.
             </p>
           </CardContent>
         </Card>

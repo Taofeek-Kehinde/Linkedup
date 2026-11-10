@@ -11,55 +11,8 @@ type ActiveEvent = {
   show_name: string | null;
 };
 
-type TimerMode = "preGate" | "gateOpen" | "postGate";
-
-// ── configuration ────────────────────────────────────────────────
-const DEFAULT_PULLUP_URL = "https://vm.tiktok.com/ZS9r59EeLmR6h-8wpkw/"; // fallback TikTok page
-
-// ── helpers ──────────────────────────────────────────────────────
-function computeSecondsUntil3pm(): number {
-  const now = new Date();
-  const target = new Date(now);
-  target.setHours(15, 0, 0, 0);
-  if (now >= target) target.setDate(target.getDate() + 1);
-  return Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
-}
-
-function computeSecondsUntilGateCloses(): number {
-  const now = new Date();
-  const close = new Date(now);
-  close.setHours(15, 15, 0, 0);
-  return Math.max(0, Math.floor((close.getTime() - now.getTime()) / 1000));
-}
-
-function getTimerMode(): TimerMode {
-  const now = new Date();
-  const h = now.getHours();
-  const m = now.getMinutes();
-  const s = now.getSeconds();
-
-  const totalSeconds = h * 3600 + m * 60 + s;
-  const gateStart = 15 * 3600;           // 15:00:00
-  const gateEnd   = 15 * 3600 + 15 * 60; // 15:15:00
-
-  if (totalSeconds < gateStart) return "preGate";
-  if (totalSeconds < gateEnd)   return "gateOpen";
-  return "postGate";
-}
-
-function computeRemaining(mode: TimerMode): number {
-  switch (mode) {
-    case "preGate":  return computeSecondsUntil3pm();
-    case "gateOpen": return computeSecondsUntilGateCloses();
-    case "postGate": return computeSecondsUntil3pm();
-  }
-}
-
 // ── Component ────────────────────────────────────────────────────
 export default function MyDashboard() {
-  const [remaining, setRemaining] = useState<number>(0);
-  const [mounted, setMounted] = useState<boolean>(false);
-  const [timerMode, setTimerMode] = useState<TimerMode>("postGate");
   const [hasEvent, setHasEvent] = useState<boolean>(false);
   const [isCheckingEvent, setIsCheckingEvent] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -67,22 +20,30 @@ export default function MyDashboard() {
   const [isInviteOpen, setIsInviteOpen] = useState<boolean>(false);
   const [joinLink, setJoinLink] = useState<string>("");
   const [copyLabel, setCopyLabel] = useState<string>("Copy link");
+  const [pullupUrl, setPullupUrl] = useState<string>("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── tick every second ─────────────────────────────────────────
   useEffect(() => {
-    const tick = () => {
-      const mode = getTimerMode();
-      setTimerMode(mode);
-      setRemaining(computeRemaining(mode));
+    let ignore = false;
+    const loadPullupUrl = async () => {
+      try {
+        const response = await fetch("/api/admin/pullup-url", { cache: "no-store" });
+        if (!response.ok) throw new Error("Could not load redirect URL");
+        const result: { url?: string } = await response.json();
+        if (!ignore) setPullupUrl(result.url || "");
+      } catch {
+        if (!ignore) setPullupUrl("");
+      }
     };
 
-    tick();                // initial
-    setMounted(true);
+    void loadPullupUrl();
+    window.addEventListener("focus", loadPullupUrl);
 
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    return () => {
+      ignore = true;
+      window.removeEventListener("focus", loadPullupUrl);
+    };
   }, []);
 
   // ── check for existing event ──────────────────────────────────
@@ -133,66 +94,18 @@ export default function MyDashboard() {
     };
   }, []);
 
-  // ── computed display ──────────────────────────────────────────
-  const isGateOpen = timerMode === "gateOpen";
-
-  const hrs = Math.floor(remaining / 3600);
-  const mins = Math.floor((remaining % 3600) / 60);
-  const secs = remaining % 60;
-  const mmss = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  const hhmmss = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-
-  const timerDisplay = mounted
-    ? timerMode === "gateOpen"
-      ? "TAP TO PULLUP"
-      : hhmmss
-    : "00:00:00";
-
   // ── handlers ──────────────────────────────────────────────────
-  const getPullupUrl = useCallback((): string => {
-    if (typeof window !== 'undefined') {
-      const customUrl = localStorage.getItem('pullup_url')
-      if (customUrl) return customUrl
-    }
-    return DEFAULT_PULLUP_URL
-  }, [])
-
-  const handleTimerClick = useCallback(() => {
-    if (!isGateOpen) return;              // only clickable during gate window
-    const url = getPullupUrl()
-    if (!url) return
-
-    // Attempt 1: window.open WITHOUT the "noopener" feature string so we can
-    // actually detect a blocked popup (window.open returns null when blocked).
-    // The old code passed "noopener,noreferrer" which always returns null,
-    // so a blocked popup was never detected or recovered from.
-    const opened = window.open(url, "_blank");
-    if (opened) return;
-
-    // Attempt 2: synthesize a real anchor click. Mobile Safari/Chrome and
-    // installed PWAs treat this as a genuine user gesture rather than a
-    // popup, so it opens reliably.
-    try {
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.target = "_blank";
-      anchor.rel = "noopener noreferrer";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-    } catch {
-      // Final fallback: navigate in the same tab.
-      window.location.href = url;
-    }
-  }, [isGateOpen, getPullupUrl]);
-
-  const handleCreateLink = useCallback(() => {
-    window.location.href = "/admin/link/create";
+  const handleBrowseEvents = useCallback(() => {
+    window.location.href = "/events";
   }, []);
 
   const handleCreateQR = useCallback(() => {
     window.location.href = "/admin/create";
   }, []);
+
+  const handleClockClick = useCallback(() => {
+    if (pullupUrl) window.location.assign(pullupUrl);
+  }, [pullupUrl]);
 
   const closeInvite = useCallback(() => {
     setIsInviteOpen(false);
@@ -249,34 +162,21 @@ export default function MyDashboard() {
       <div className={styles.glassCard}>
         <div className={styles.glassReflection}></div>
 
-        {/* Timer – Clickable only during 3:00–3:15 */}
-        <div
-          className={`${styles.timerOuter} ${isGateOpen ? styles.timerClickable : ""}`}
-          onClick={handleTimerClick}
-          role="button"
-          tabIndex={isGateOpen ? 0 : -1}
-          aria-label={isGateOpen ? "Tap to pullup" : "Gate timer"}
-          onKeyDown={(e) => { if (e.key === "Enter" && isGateOpen) handleTimerClick(); }}
+        {/* Center label */}
+        <button
+          className={styles.timerOuter}
+          onClick={() => { window.location.href = "/peep/create"; }}
+          type="button"
+          aria-label="Create a Peep"
+          title="Record a 3-second Peep"
         >
           <div className={styles.timerGlow}></div>
-          <div
-            className={styles.timerInner}
-            style={
-              isGateOpen
-                ? { background: "radial-gradient(circle at top, #22c55e, #16a34a, #15803d)" }
-                : undefined
-            }
-          >
+          <div className={styles.timerInner}>
             <div className={styles.timerText}>
-              <span
-                className={styles.timerValue}
-                style={isGateOpen ? { color: "#fff", textShadow: "0 0 20px rgba(34,197,94,0.8)" } : undefined}
-              >
-                {timerDisplay}
-              </span>
+              <span className={styles.timerValue}>PEEP</span>
             </div>
           </div>
-        </div>
+        </button>
 
         {/* Description */}
         <div className={styles.descriptionWrap}>
@@ -288,11 +188,11 @@ export default function MyDashboard() {
         <div className={styles.buttonRow}>
           <button
             className={styles.actionButtonLink}
-            onClick={handleCreateLink}
+            onClick={handleBrowseEvents}
             type="button"
-            title="Create Linkup Event"
+            title="Browse live events"
           >
-            LINKUP
+            JOIN
           </button>
           <button
             className={styles.actionButtonShowup}
@@ -300,10 +200,21 @@ export default function MyDashboard() {
             type="button"
             title="Create QR Event"
           >
-            SHOWUP
+            CREATE
           </button>
         </div>
       </div>
+
+      <button
+        className={`${styles.clockDisplay} ${pullupUrl ? styles.clockConfigured : ""}`}
+        onClick={handleClockClick}
+        type="button"
+        disabled={!pullupUrl}
+        aria-label={pullupUrl ? "Open configured link" : "No redirect link configured"}
+        title={pullupUrl ? "Open configured link" : "Set a redirect URL in the admin page"}
+      >
+        00:00:00
+      </button>
 
       {/* Footer */}
       <div className={styles.footer}>
