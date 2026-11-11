@@ -34,7 +34,7 @@ export default function CreatePeepPage() {
     setError(null)
     try {
       const formData = new FormData()
-      formData.append('file', blob, 'peep.webm')
+      formData.append('file', blob, blob.type.includes('mp4') ? 'peep.mp4' : 'peep.webm')
 
       const headers = new Headers()
       if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { Camera, ArrowLeft, RotateCcw, Check, Video, Clock3, Link2 } from 'lucide-react'
 
@@ -27,6 +27,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
   
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [recordingError, setRecordingError] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [countdown, setCountdown] = useState(RECORD_DURATION)
   const [capturedVideoUrl, setCapturedVideoUrl] = useState<string | null>(null)
@@ -87,22 +88,42 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
 
     chunksRef.current = []
     setCountdown(RECORD_DURATION)
-    setIsRecording(true)
+    setRecordingError(null)
 
-    // Use webm for broad browser support
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-      ? 'video/webm;codecs=vp8'
-      : 'video/webm'
-
-    const recorderOptions: MediaRecorderOptions = { mimeType }
+    const supportedTypes = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4',
+    ]
+    const recorderOptions: MediaRecorderOptions = {}
     if (variant === 'peep') {
       recorderOptions.videoBitsPerSecond = 250_000
       recorderOptions.audioBitsPerSecond = 32_000
     }
 
-    const recorder = new MediaRecorder(streamRef.current, recorderOptions)
+    let recorder: MediaRecorder | null = null
+    let recorderError: unknown
+    for (const type of supportedTypes) {
+      if (!MediaRecorder.isTypeSupported(type)) continue
+      try {
+        recorder = new MediaRecorder(streamRef.current, { ...recorderOptions, mimeType: type })
+        break
+      } catch (error) {
+        recorderError = error
+      }
+    }
+    if (!recorder) {
+      try {
+        recorder = new MediaRecorder(streamRef.current, recorderOptions)
+      } catch (error) {
+        console.error('Could not create a media recorder:', recorderError ?? error)
+        setRecordingError('This browser cannot record video with audio. Try another browser or device.')
+        return
+      }
+    }
+
     mediaRecorderRef.current = recorder
 
     recorder.ondataavailable = (e) => {
@@ -110,6 +131,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
     }
 
     recorder.onstop = () => {
+      const mimeType = recorder.mimeType || chunksRef.current[0]?.type || 'video/webm'
       const blob = new Blob(chunksRef.current, { type: mimeType })
       const url = URL.createObjectURL(blob)
       setCapturedVideoUrl(url)
@@ -117,7 +139,14 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
       stopCamera()
     }
 
-    recorder.start(100) // collect data every 100ms
+    try {
+      recorder.start(100)
+    } catch (error) {
+      console.error('Could not start media recording:', error)
+      setRecordingError('Could not start recording. Please try again or use another browser.')
+      return
+    }
+    setIsRecording(true)
 
     // Countdown timer
     let remaining = RECORD_DURATION
@@ -149,7 +178,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
     // We stored chunks in chunksRef - use those to create the final blob
     if (chunksRef.current.length === 0) return
 
-    const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm'
+    const mimeType = mediaRecorderRef.current?.mimeType || chunksRef.current[0]?.type || 'video/webm'
     const finalBlob = new Blob(chunksRef.current, { type: mimeType })
     onCapture(finalBlob)
   }
@@ -175,7 +204,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
 
   return (
     <main className={variant === 'peep'
-      ? 'relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-zinc-950 p-4 text-white'
+      ? 'relative flex h-dvh min-h-dvh flex-col items-center overflow-hidden bg-zinc-950 text-white'
       : 'min-h-dvh flex flex-col items-center justify-center p-4'}
     >
       {variant === 'peep' && (
@@ -184,7 +213,10 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
           <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-rose-500/10 blur-3xl" />
         </>
       )}
-      <div className={`relative z-10 w-full ${variant === 'peep' ? 'max-w-2xl space-y-7' : 'max-w-md space-y-6'}`}>
+      <div className={`relative z-10 w-full ${variant === 'peep'
+        ? 'flex h-full min-h-0 max-w-none flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-4 sm:px-8'
+        : 'max-w-md space-y-6'}`}
+      >
         {variant === 'peep' && (
           <Button
             variant="ghost"
@@ -197,10 +229,10 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
           </Button>
         )}
         {/* Header */}
-        <div className="space-y-3 text-center">
+        <div className={`text-center ${variant === 'peep' ? 'space-y-1.5' : 'space-y-3'}`}>
           {variant === 'peep' && (
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10">
-              <Video className="h-7 w-7 text-red-400" />
+            <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-red-400/20 bg-red-500/10">
+              <Video className="h-4 w-4 text-red-400" />
             </div>
           )}
           <h1 className={`font-semibold tracking-tight ${variant === 'peep' ? 'text-3xl sm:text-4xl' : 'text-2xl text-foreground'}`}>
@@ -224,22 +256,17 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
 
         {/* Camera Card */}
         <Card className={variant === 'peep'
-          ? 'overflow-hidden rounded-3xl border-white/10 bg-zinc-900/70 text-white shadow-2xl shadow-black/30 backdrop-blur-xl'
+          ? 'flex min-h-0 flex-1 flex-col border-0 bg-transparent text-white shadow-none'
           : 'border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden'}
         >
-          {variant === 'peep' && (
-            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-white/5 px-5 py-4">
-              <div>
-                <CardTitle className="text-sm font-medium text-white">Camera preview</CardTitle>
-                <CardDescription className="mt-1 text-xs text-zinc-500">Your video is not shared until you publish.</CardDescription>
-              </div>
-              <span className="rounded-full border border-red-400/20 bg-red-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-red-300">
-                00:03 max
-              </span>
-            </CardHeader>
-          )}
-          <CardContent className="p-0">
-            <div className={`relative aspect-square bg-black ${variant === 'peep' ? 'mx-auto max-w-[440px]' : ''}`}>
+          <CardContent className={variant === 'peep'
+            ? 'flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-0'
+            : 'p-0'}
+          >
+            <div className={variant === 'peep'
+              ? 'relative h-[min(92vw,58dvh,640px)] w-[min(92vw,58dvh,640px)] shrink-0 overflow-hidden rounded-full border border-emerald-500/50 bg-black shadow-[0_0_60px_rgba(0,168,132,0.12)]'
+              : 'relative aspect-square bg-black'}
+            >
 {/* Live camera preview (before and during recording - single element to preserve stream) */}
               {!capturedVideoUrl && (
                 <video
@@ -248,7 +275,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                   playsInline
                   muted
                   className={`${variant === 'peep'
-                    ? 'absolute left-1/2 top-1/2 h-[min(70vw,320px)] w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2 rounded-full object-cover'
+                    ? 'absolute inset-0 h-full w-full rounded-full object-cover'
                     : 'absolute inset-0 h-full w-full object-cover'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                 />
               )}
@@ -263,13 +290,13 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                   muted
                   playsInline
                   className={variant === 'peep'
-                    ? 'absolute left-1/2 top-1/2 h-[min(70vw,320px)] w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2 rounded-full object-cover'
+                    ? 'absolute inset-0 h-full w-full rounded-full object-cover'
                     : 'absolute inset-0 h-full w-full object-cover'}
                 />
               )}
 
               {variant === 'peep' && (
-                <div className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2">
+                <div className="pointer-events-none absolute inset-0">
                   <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
                     <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0, 168, 132, 0.35)" strokeWidth="1.5" />
                     <circle
@@ -352,7 +379,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
               )}
             </div>
             {variant === 'peep' && cameraActive && !capturedVideoUrl && !isRecording && (
-              <div className="flex items-center justify-center gap-5 border-t border-white/5 bg-zinc-950/60 py-4">
+              <div className="flex items-center justify-center gap-5">
                 <Button
                   size="icon"
                   variant="secondary"
@@ -372,6 +399,9 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                 </Button>
                 <div className="h-11 w-11" aria-hidden="true" />
               </div>
+            )}
+            {variant === 'peep' && recordingError && (
+              <p className="max-w-sm text-center text-sm text-red-300" role="alert">{recordingError}</p>
             )}
           </CardContent>
         </Card>

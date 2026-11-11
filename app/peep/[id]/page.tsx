@@ -2,9 +2,8 @@
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { Copy, Video } from 'lucide-react'
+import { Copy, Share2, Video } from 'lucide-react'
 
 type PeepData = {
   videoUrl: string
@@ -79,32 +78,56 @@ export default function PeepPage({ params }: PeepPageProps) {
     }
   }, [])
 
+  const sharePeep = useCallback(async () => {
+    if (!navigator.share) {
+      await copyLink()
+      return
+    }
+
+    try {
+      await navigator.share({
+        title: 'My Peep',
+        text: 'Watch my Peep before it expires.',
+        url: window.location.href,
+      })
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === 'AbortError') return
+      setError('Could not share the link. You can copy it instead.')
+    }
+  }, [copyLink])
+
   return (
-    <main className="min-h-dvh flex items-center justify-center bg-black p-4 text-white">
-      <Card className="w-full max-w-md overflow-hidden border-white/10 bg-zinc-950 text-white">
-        <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2 text-2xl">
+    <main className="h-dvh min-h-dvh overflow-y-auto bg-zinc-950 text-white">
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+        <header className="text-center">
+          <h1 className="flex items-center justify-center gap-2 text-2xl font-semibold">
             <Video className="h-5 w-5 text-red-500" />
             PEEP
-          </CardTitle>
-          <CardDescription className="text-zinc-400">
+          </h1>
+          <p className="mt-1 text-sm text-zinc-400">
             A 3-second looping video that disappears after 3 hours.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+          </p>
+        </header>
+        <section className="flex w-full flex-1 flex-col items-center justify-center gap-4 py-4">
           {peep ? (
             <>
-              <video
-                key={peep.videoUrl}
-                src={peep.videoUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
-                className="aspect-square w-full rounded-xl bg-black object-cover"
-              />
-              <div className="space-y-2 text-center">
+              <div className="relative aspect-square h-[min(92vw,58dvh,640px)] w-[min(92vw,58dvh,640px)] shrink-0 overflow-hidden rounded-full bg-black shadow-[0_0_60px_rgba(0,168,132,0.12)]">
+                <video
+                  key={peep.videoUrl}
+                  src={peep.videoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                  className="absolute inset-0 h-full w-full rounded-full object-cover"
+                />
+                <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+                  <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0, 168, 132, 0.35)" strokeWidth="1.5" />
+                  <circle cx="50" cy="50" r="48" fill="none" stroke="#00a884" strokeWidth="1.5" />
+                </svg>
+              </div>
+              <div className="space-y-1 text-center">
                 <p className="text-sm text-zinc-400">
                   Recorded {new Date(peep.createdAt).toLocaleString()}
                 </p>
@@ -112,21 +135,27 @@ export default function PeepPage({ params }: PeepPageProps) {
                   Expires in {formatTimeRemaining(timeRemaining ?? 0)}
                 </p>
               </div>
-              <Button className="w-full" variant="outline" onClick={copyLink}>
-                <Copy className="mr-2 h-4 w-4" />
-                {copied ? 'Link Copied' : 'Copy Peep Link'}
-              </Button>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button className="w-full" onClick={sharePeep}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share Peep
+                </Button>
+                <Button className="w-full" variant="outline" onClick={copyLink}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  {copied ? 'Link Copied' : 'Copy Peep Link'}
+                </Button>
+              </div>
               {error && <p className="text-center text-sm text-red-400" role="status">{error}</p>}
             </>
           ) : error ? (
-            <p className="py-8 text-center text-sm text-zinc-300" role="status">{error}</p>
+            <p className="text-center text-sm text-zinc-300" role="status">{error}</p>
           ) : (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center">
               <Spinner className="h-8 w-8" />
             </div>
           )}
-        </CardContent>
-      </Card>
+        </section>
+      </div>
     </main>
   )
 }
