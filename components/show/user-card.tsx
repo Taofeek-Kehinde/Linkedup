@@ -17,7 +17,8 @@ interface SelfieImageProps {
 export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieImageProps) {
   const [mediaFailed, setMediaFailed] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
-  const [isVideo, setIsVideo] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [retryPending, setRetryPending] = useState(false)
 
   const raw = (src || '').trim()
 
@@ -39,65 +40,145 @@ export function SelfieImage({ src, alt, className, fallbackClassName }: SelfieIm
     // prevent duplicated slashes
     return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${path}`
   })()
+  const isVideo = /\.(webm|mp4)(?:[?#]|$)/i.test(selfieUrl)
+  const imageUrl = (() => {
+    if (isVideo) return selfieUrl
+
+    try {
+      const url = new URL(selfieUrl)
+      if (/\/storage\/v1\/object\/public\//.test(url.pathname)) {
+        url.searchParams.set('width', '512')
+        url.searchParams.set('height', '512')
+        url.searchParams.set('resize', 'cover')
+        url.searchParams.set('quality', '75')
+      }
+      return url.toString()
+    } catch {
+      return selfieUrl
+    }
+  })()
 
   useEffect(() => {
     setMediaFailed(false)
     setRetryCount(0)
-    // Determine if the URL points to a video file
-    if (selfieUrl) {
-      const ext = selfieUrl.split('.').pop()?.toLowerCase() || ''
-      setIsVideo(['webm', 'mp4'].includes(ext))
-    } else {
-      setIsVideo(false)
-    }
+    setIsLoaded(false)
+    setRetryPending(false)
   }, [selfieUrl])
 
+  useEffect(() => {
+    if (!retryPending) return
+
+    let timeoutId: number | undefined
+    const retry = () => {
+      timeoutId = window.setTimeout(() => {
+        setRetryCount((count) => count + 1)
+        setRetryPending(false)
+      }, Math.min(1000 * 2 ** retryCount, 8000))
+    }
+
+    if (navigator.onLine) {
+      retry()
+    } else {
+      window.addEventListener('online', retry, { once: true })
+    }
+
+    return () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      window.removeEventListener('online', retry)
+    }
+  }, [retryCount, retryPending])
+
   const showFallback = mediaFailed || selfieUrl.length === 0
+
+  function handleMediaError() {
+    setIsLoaded(false)
+    if (retryCount < 3) {
+      setRetryPending(true)
+    } else {
+      setMediaFailed(true)
+    }
+  }
+
+  const retryUrl = retryCount === 0
+    ? imageUrl
+    : `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}retry=${retryCount}`
+
+  function retryImage() {
+    setIsLoaded(false)
+    setRetryPending(false)
+    setRetryCount(0)
+    setMediaFailed(false)
+  }
 
   if (showFallback) {
     return (
       <div
-        className={
-          fallbackClassName ||
-          'w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10'
-        }
+        className={`relative ${fallbackClassName || 'w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10'}`}
       >
         <User className="h-10 w-10 text-muted-foreground" />
+        {selfieUrl && (
+          <button
+            type="button"
+            className="absolute bottom-1 rounded bg-background/80 px-2 py-1 text-[10px] text-foreground"
+            onClick={(event) => {
+              event.stopPropagation()
+              retryImage()
+            }}
+            aria-label={`Retry loading ${alt}'s photo`}
+          >
+            Retry
+          </button>
+        )}
       </div>
     )
   }
 
-  // Render video element for video files
   if (isVideo) {
     return (
-      <video
-        src={selfieUrl}
-        autoPlay
-        loop
-        muted
-        playsInline
-        className={className || 'w-full h-full object-cover'}
-        onError={() => setMediaFailed(true)}
-      />
+      <div className="relative h-full w-full overflow-hidden">
+        {!isLoaded && (
+          <div
+            className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted to-muted-foreground/10"
+            aria-hidden="true"
+          />
+        )}
+        <video
+          key={retryUrl}
+          src={retryUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className={className || 'w-full h-full object-cover'}
+          onLoadedData={() => setIsLoaded(true)}
+          onError={handleMediaError}
+        />
+      </div>
     )
   }
 
-  // Render image element for photos (fallback for older profiles)
   return (
-    <img
-      src={`${selfieUrl}${selfieUrl.includes('?') ? '&' : '?'}retry=${retryCount}`}
-      alt={alt}
-      className={className || 'w-full h-full object-cover'}
-      loading="lazy"
-      decoding="async"
-      onError={() => {
-        if (retryCount === 0) {
-          setRetryCount(1)
-          return
-        }
-        setMediaFailed(true)
-      }}
-    />
+    <div className="relative h-full w-full overflow-hidden">
+      {!isLoaded && (
+        <div
+          className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted to-muted-foreground/10"
+          aria-hidden="true"
+        />
+      )}
+      <img
+        key={`${selfieUrl}-${retryCount}`}
+        src={retryUrl}
+        alt={alt}
+        className={className || 'w-full h-full object-cover'}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => {
+          setIsLoaded(true)
+          setRetryPending(false)
+        }}
+        onError={handleMediaError}
+      />
+    </div>
   )
 }
 
@@ -181,4 +262,3 @@ return (
      </div>
    )
 }
-

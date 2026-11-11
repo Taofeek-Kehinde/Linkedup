@@ -186,9 +186,14 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
       )}
       <div className={`relative z-10 w-full ${variant === 'peep' ? 'max-w-2xl space-y-7' : 'max-w-md space-y-6'}`}>
         {variant === 'peep' && (
-          <Button variant="ghost" onClick={onBack} disabled={isLoading} className="text-zinc-400 hover:bg-white/5 hover:text-white">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Dashboard
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            disabled={isLoading}
+            className="group flex min-h-11 w-fit items-center gap-2 rounded-full px-4 text-zinc-400 transition-all duration-200 hover:-translate-x-0.5 hover:bg-white/5 hover:text-white active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1 motion-reduce:transition-none" />
+            Back to home
           </Button>
         )}
         {/* Header */}

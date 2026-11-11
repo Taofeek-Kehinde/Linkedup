@@ -27,7 +27,7 @@ body {
 .background {
   position: absolute;
   inset: -10px;
-  background-image: url("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80");
+  background-image: url("/bg1.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

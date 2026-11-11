@@ -61,7 +61,7 @@ export default function CreatePeepPage() {
     <SelfieCapture
       variant="peep"
       onCapture={publishPeep}
-      onBack={() => router.push('/admin/dashboard')}
+      onBack={() => router.push('/')}
       isLoading={isUploading}
       error={error}
     />
