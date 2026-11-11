@@ -330,14 +330,14 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                   <Button
                     size="icon"
                     variant="secondary"
-                    className={`h-12 w-12 rounded-full backdrop-blur-sm ${variant === 'peep' ? 'bg-black/40 hover:bg-black/60' : 'bg-white/10 hover:bg-white/20'}`}
+                    className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20"
                     onClick={toggleCamera}
                   >
                     <RotateCcw className="w-5 h-5 text-white" />
                   </Button>
                   <Button
                     size="icon"
-                    className={`h-16 w-16 rounded-full bg-red-500 hover:bg-red-600 ${variant === 'peep' ? 'shadow-lg shadow-red-950/50 ring-4 ring-red-500/15' : ''}`}
+                    className="h-16 w-16 rounded-full bg-red-500 hover:bg-red-600"
                     onClick={startRecording}
                   >
                     <Video className="w-7 h-7 text-white" />
