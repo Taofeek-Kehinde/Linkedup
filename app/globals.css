@@ -3,6 +3,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes peep-record-progress {
+  from {
+    stroke-dashoffset: 301.6;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.peep-record-progress {
+  animation: peep-record-progress 3s linear forwards;
+}
+
 /* LinkedUp - Mobile-first Social App Theme */
 :root {
   /* Dark theme as default for social app */
@@ -162,5 +175,4 @@
     animation: bg-zoom-fade 9s infinite 6s;
   }
 }
-
 

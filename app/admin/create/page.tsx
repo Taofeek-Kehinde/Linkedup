@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Sparkles, MapPin, Check, Plus, Edit3, Trash2, CalendarDays, Clock } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Check, Plus, Trash2, CalendarDays, Clock } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -21,11 +21,8 @@ export default function CreateEventPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [showName, setShowName] = useState('')
-  const [eventAddress, setEventAddress] = useState('')
-  const [locations, setLocations] = useState<string[]>([])
-  const [newLocation, setNewLocation] = useState('')
+  const [locations, setLocations] = useState<string[]>([''])
   const [scheduledStartAt, setScheduledStartAt] = useState<Date | null>(null)
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -41,37 +38,21 @@ export default function CreateEventPage() {
     checkAuth()
   }, [router])
 
-  const addLocation = () => {
-    if (newLocation.trim()) {
-      setLocations([...locations, newLocation.trim()])
-      setNewLocation('')
-    }
-  }
-
-  const updateLocation = (index: number, value: string) => {
-    const newLocs = [...locations]
-    newLocs[index] = value
-    setLocations(newLocs)
-  }
-
-  const deleteLocation = (index: number) => {
-    setLocations(locations.filter((_, i) => i !== index))
-    if (editingIndex === index) setEditingIndex(null)
-  }
-
-  const startEditing = (index: number) => {
-    setEditingIndex(index)
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
+
+    const eventLocations = locations.map((location) => location.trim()).filter(Boolean)
+    if (eventLocations.length === 0) {
+      setError('Add at least one event location.')
+      return
+    }
 
     setIsLoading(true)
     setError(null)
 
     const supabase = createClient()
-    const eventCode = generateEventCode(locations[0] || 'EVENT')
+    const eventCode = generateEventCode(eventLocations[0])
     const scheduledStartIso = scheduledStartAt ? scheduledStartAt.toISOString() : null
     const now = new Date()
     const isUpcoming = scheduledStartAt && scheduledStartAt.getTime() > now.getTime()
@@ -84,8 +65,8 @@ export default function CreateEventPage() {
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
-        location: eventAddress.trim(),
-        locations: locations,
+        location: eventLocations[0],
+        locations: eventLocations,
         duration_hours: 15,
         scheduled_start_at: scheduledStartIso,
         status,
@@ -159,21 +140,54 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="eventAddress" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Event address
-                </Label>
-                <Input
-                  id="eventAddress"
-                  placeholder="e.g., 12 Example Street, Lagos"
-                  value={eventAddress}
-                  onChange={(e) => setEventAddress(e.target.value)}
-                  required
-                  className="bg-input"
-                />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Event locations
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocations((current) => [...current, ''])}
+                    className="shrink-0"
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add location
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {locations.map((location, index) => (
+                    <div key={index} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {index + 1}
+                      </span>
+                      <Input
+                        aria-label={`Event location ${index + 1}`}
+                        placeholder={index === 0 ? 'e.g., 12 Example Street, Lagos' : 'Add another event location'}
+                        value={location}
+                        onChange={(e) => setLocations((current) => current.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                        required
+                        className="bg-input"
+                      />
+                      {locations.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove location ${index + 1}`}
+                          onClick={() => setLocations((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Attendees will see this address when they open the event link or scan its QR code.
+                  Add every area or venue where attendees can join this event. Attendees will choose one when they join.
                 </p>
               </div>
 

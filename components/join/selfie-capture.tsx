@@ -234,7 +234,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
             </CardHeader>
           )}
           <CardContent className="p-0">
-            <div className={`relative aspect-square bg-black ${variant === 'peep' ? 'sm:aspect-[4/3]' : ''}`}>
+            <div className={`relative aspect-square bg-black ${variant === 'peep' ? 'mx-auto max-w-[440px]' : ''}`}>
 {/* Live camera preview (before and during recording - single element to preserve stream) */}
               {!capturedVideoUrl && (
                 <video
@@ -242,7 +242,9 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 h-full w-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                  className={`${variant === 'peep'
+                    ? 'absolute left-1/2 top-1/2 h-[min(70vw,320px)] w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2 rounded-full object-cover'
+                    : 'absolute inset-0 h-full w-full object-cover'} ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                 />
               )}
               
@@ -255,8 +257,30 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                   loop
                   muted
                   playsInline
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className={variant === 'peep'
+                    ? 'absolute left-1/2 top-1/2 h-[min(70vw,320px)] w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2 rounded-full object-cover'
+                    : 'absolute inset-0 h-full w-full object-cover'}
                 />
+              )}
+
+              {variant === 'peep' && (
+                <div className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(70vw,320px)] -translate-x-1/2 -translate-y-1/2">
+                  <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0, 168, 132, 0.35)" strokeWidth="1.5" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="48"
+                      fill="none"
+                      stroke="#00a884"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeDasharray="301.6"
+                      strokeDashoffset={capturedVideoUrl ? 0 : 301.6}
+                      className={isRecording ? 'peep-record-progress' : ''}
+                    />
+                  </svg>
+                </div>
               )}
 
               {/* Recording countdown overlay */}
@@ -269,7 +293,7 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
               )}
 
               {/* Recording red dot */}
-              {isRecording && (
+              {isRecording && variant !== 'peep' && (
                 <div className="absolute top-4 right-4 z-10">
                   <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse" />
                 </div>
@@ -294,14 +318,14 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
               )}
 
               {/* Face guide overlay */}
-              {cameraActive && !capturedVideoUrl && !isRecording && (
+              {variant !== 'peep' && cameraActive && !capturedVideoUrl && !isRecording && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-48 h-48 rounded-full border-2 border-dashed border-white/30" />
                 </div>
               )}
 
               {/* Camera controls - only when not recording and no captured video */}
-              {cameraActive && !capturedVideoUrl && !isRecording && (
+              {variant !== 'peep' && cameraActive && !capturedVideoUrl && !isRecording && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
                   <Button
                     size="icon"
@@ -322,6 +346,28 @@ export function SelfieCapture({ variant = 'default', username, onCapture, onBack
                 </div>
               )}
             </div>
+            {variant === 'peep' && cameraActive && !capturedVideoUrl && !isRecording && (
+              <div className="flex items-center justify-center gap-5 border-t border-white/5 bg-zinc-950/60 py-4">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Switch camera"
+                  className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/20"
+                  onClick={toggleCamera}
+                >
+                  <RotateCcw className="h-5 w-5 text-white" />
+                </Button>
+                <Button
+                  size="icon"
+                  aria-label="Start recording"
+                  className="h-14 w-14 rounded-full bg-red-500 shadow-lg shadow-red-950/50 ring-4 ring-red-500/15 hover:bg-red-600"
+                  onClick={startRecording}
+                >
+                  <Video className="h-6 w-6 text-white" />
+                </Button>
+                <div className="h-11 w-11" aria-hidden="true" />
+              </div>
+            )}
           </CardContent>
         </Card>
 

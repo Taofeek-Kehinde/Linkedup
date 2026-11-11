@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./mydashbaord.module.css";
+
+const smileImages = ["one.jpg", "two.jpg", "three.jpg", "four.jpg", "five.jpg"];
 
 type ActiveEvent = {
   id: string;
@@ -172,6 +175,19 @@ export default function MyDashboard() {
         >
           <div className={styles.timerGlow}></div>
           <div className={styles.timerInner}>
+            {smileImages.map((image, index) => (
+              <Image
+                key={image}
+                src={`/smiles/${image}`}
+                alt=""
+                fill
+                loading="eager"
+                sizes="128px"
+                style={{ animationDelay: `${-index * 3}s` }}
+                className={styles.timerImage}
+              />
+            ))}
+            <span className={styles.timerImageOverlay} aria-hidden="true" />
             <div className={styles.timerText}>
               <span className={styles.timerValue}>PEEP</span>
             </div>

@@ -247,10 +247,11 @@ export function JoinFlow() {
 
   function proceedToLocation() {
     // If event has multiple locations, show location selection
-    if (event?.locations && event.locations.length > 1) {
+    const eventLocations = event?.locations?.length ? event.locations : event?.location ? [event.location] : []
+    if (eventLocations.length > 1) {
       setStep('location')
     } else {
-      // Skip location step for single-location or no-location events
+      setSelectedLocation(eventLocations[0] || '')
       setStep('selfie')
     }
   }

@@ -10,8 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Sparkles, MapPin, Clock, Check } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Clock, Check, Plus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -24,8 +23,7 @@ export default function AdminHostEventPage() {
   
   // Form state
   const [showName, setShowName] = useState('')
-  const [locations, setLocations] = useState<string[]>([])
-  const [newLocation, setNewLocation] = useState('')
+  const [locations, setLocations] = useState<string[]>([''])
   const [scheduledStartAt, setScheduledStartAt] = useState('')
   const [durationHours, setDurationHours] = useState('6')
 
@@ -50,18 +48,25 @@ export default function AdminHostEventPage() {
     setIsLoading(true)
     setError(null)
 
+    const eventLocations = locations.map((location) => location.trim()).filter(Boolean)
+    if (eventLocations.length === 0) {
+      setError('Add at least one event location.')
+      setIsLoading(false)
+      return
+    }
+
     const supabase = createClient()
     
     // Generate unique event code
-    const eventCode = generateEventCode(locations[0] || showName.trim() || 'EVENT')
+    const eventCode = generateEventCode(eventLocations[0] || showName.trim() || 'EVENT')
 
     const { data, error } = await supabase
       .from('events')
       .insert({
         event_code: eventCode,
         show_name: showName.trim(),
-        locations: locations.length > 0 ? locations : null,
-        location: locations[0] || null,
+        locations: eventLocations,
+        location: eventLocations[0],
         scheduled_start_at: scheduledStartAt || null,
         duration_hours: parseInt(durationHours),
         status: 'archived',
@@ -129,64 +134,53 @@ export default function AdminHostEventPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Locations
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="new-location"
-                    placeholder="Add location (e.g., San Francisco)"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newLocation.trim()) {
-                        e.preventDefault()
-                        setLocations([...locations, newLocation.trim()])
-                        setNewLocation('')
-                      }
-                    }}
-                    className="flex-1 bg-input"
-                  />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Locations
+                  </Label>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      if (newLocation.trim()) {
-                        setLocations([...locations, newLocation.trim()])
-                        setNewLocation('')
-                      }
-                    }}
+                    onClick={() => setLocations((current) => [...current, ''])}
                   >
-                    +
+                    <Plus className="mr-1 h-4 w-4" />
+                    Add location
                   </Button>
                 </div>
-                {locations.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {locations.map((loc, index) => (
-                      <Badge 
-                        key={index}
-                        variant="secondary"
-                        className="flex items-center gap-1"
-                      >
-                        {loc}
+                <div className="space-y-2">
+                  {locations.map((location, index) => (
+                    <div key={index} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {index + 1}
+                      </span>
+                      <Input
+                        aria-label={`Event location ${index + 1}`}
+                        placeholder={index === 0 ? 'e.g., Main Hall, Lagos' : 'Add another event location'}
+                        value={location}
+                        onChange={(e) => setLocations((current) => current.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                        required
+                        className="flex-1 bg-input"
+                      />
+                      {locations.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0"
-                          onClick={() => setLocations(locations.filter((_, i) => i !== index))}
+                          size="icon"
+                          aria-label={`Remove location ${index + 1}`}
+                          onClick={() => setLocations((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
                         >
-                          ×
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Optional. Helps users filter who they see. Click + to add, × to remove.
+                  Add all areas or venues for the event. Attendees choose their location when they join.
                 </p>
               </div>
 
@@ -264,4 +258,3 @@ export default function AdminHostEventPage() {
     </main>
   )
 }
-

@@ -129,19 +129,44 @@ body {
 }
 
 .timerInner {
+  position: relative;
   width: 128px;
   height: 128px;
+  flex: 0 0 auto;
   border-radius: 50%;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   background: radial-gradient(circle at top, #777, #444, #202020);
+  background-image: linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.28)), url("/smiles/one.jpg"), radial-gradient(circle at top, #777, #444, #202020);
+  background-size: cover, cover, 100% 100%;
+  background-position: center 40%, center 40%, center;
   color: white;
   box-shadow: inset 0 0 20px rgba(255,255,255,0.25), 0 0 12px rgba(0,0,0,0.35);
   text-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
+.timerImage {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center 40%;
+  filter: blur(2px);
+  transform: scale(1.06);
+  animation: smileCycle 15s linear infinite both;
+}
+
+.timerImageOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
 .timerText {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -530,6 +555,20 @@ body {
   }
   100% {
     transform: translateX(180%) rotate(-18deg);
+  }
+}
+
+@keyframes smileCycle {
+  0%,
+  18% {
+    opacity: 1;
+  }
+  20%,
+  98% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 

@@ -88,7 +88,7 @@ export default function EventsPage() {
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">Live events</h1>
             <p className="text-sm text-muted-foreground">
-              Join an event happening now. Blue ticks are for people who join by scanning its QR code.
+              Join an event happening now. Blue ticks are for persons physically present at the event by checking in via QR code.
             </p>
           </div>
         </div>
@@ -110,9 +110,9 @@ export default function EventsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {liveEvents.map((event) => {
-              const location = event.location || (event.locations?.length
+              const eventLocations = event.locations?.length
                 ? event.locations.join(', ')
-                : 'Location coming soon')
+                : event.location || 'Location coming soon'
 
               return (
                 <Card key={event.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
@@ -132,7 +132,7 @@ export default function EventsPage() {
                   <CardContent className="space-y-4">
                     <p className="flex items-start gap-2 text-sm text-muted-foreground">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                      <span className="line-clamp-2">{location}</span>
+                      <span className="line-clamp-2">{eventLocations}</span>
                     </p>
                     <Button
                       className="w-full"
