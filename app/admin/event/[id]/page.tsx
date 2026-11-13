@@ -721,12 +721,19 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
                     </div>
                   )}
                   {event.locations && event.locations.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
                         <MapPin className="h-4 w-4" />
                         Locations
                       </span>
-                      <span className="font-semibold text-foreground max-w-[200px] truncate">{event.locations.join(', ')}</span>
+                      <div className="space-y-2 text-right">
+                        {event.locations.map((location, index) => (
+                          <div key={`${location}-${index}`} className="flex items-start justify-end gap-1 font-semibold text-foreground">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span>{location}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {event.scheduled_start_at && (

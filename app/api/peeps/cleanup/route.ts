@@ -47,7 +47,18 @@ export async function GET(request: NextRequest) {
       deletedCount += expiredPeeps.length
     }
 
-    return NextResponse.json({ deletedCount })
+    const { data: expiredRequests, error: requestQueryError } = await adminClient
+      .from('peep_requests')
+      .delete()
+      .lte('expires_at', new Date().toISOString())
+      .select('id')
+
+    if (requestQueryError) {
+      console.error('Expired Peep request cleanup failed:', requestQueryError)
+      return NextResponse.json({ error: 'Could not clean up expired Peep requests.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ deletedCount, deletedRequestCount: expiredRequests?.length ?? 0 })
   } catch (error) {
     console.error('Expired Peep cleanup failed:', error)
     return NextResponse.json({ error: 'Could not clean up expired Peeps.' }, { status: 500 })

@@ -1,10 +1,20 @@
-const CACHE_NAME = "linkedup-cache-v2";
+const CACHE_NAME = "linkedup-cache-v3";
 
 const FILES_TO_CACHE = [
   "/",
   "/logo.png",
   "/icon-192.png",
-  "/icon-512.png"
+  "/icon-512.png",
+  "/smiles/one.jpg",
+  "/smiles/two.jpg",
+  "/smiles/three.jpg",
+  "/smiles/four.jpg",
+  "/smiles/five.jpg",
+  "/smiles/six.jpg",
+  "/smiles/seven.jpg",
+  "/smiles/eight.jpg",
+  "/smiles/nine.jpg",
+  "/smiles/ten.jpg"
 ];
 
 // 1. Install files into the cache
@@ -35,6 +45,27 @@ self.addEventListener("activate", (event) => {
 
 // 3. Network-First Strategy: Check the internet first, fall back to cache if offline
 self.addEventListener("fetch", (event) => {
+  const requestUrl = new URL(event.request.url);
+  if (
+    event.request.method === "GET" &&
+    requestUrl.origin === self.location.origin &&
+    requestUrl.pathname.startsWith("/smiles/")
+  ) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(event.request);
+        if (cachedResponse) return cachedResponse;
+
+        const networkResponse = await fetch(event.request);
+        if (networkResponse.ok) {
+          await cache.put(event.request, networkResponse.clone());
+        }
+        return networkResponse;
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { ArrowLeft, Sparkles, MapPin, Check, Plus, Trash2, CalendarDays, Clock } from 'lucide-react'
+import { ArrowLeft, Sparkles, MapPin, Check, Plus, Trash2, Clock } from 'lucide-react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 
@@ -22,7 +22,6 @@ export default function CreateEventPage() {
 
   const [showName, setShowName] = useState('')
   const [locations, setLocations] = useState<string[]>([''])
-  const [scheduledStartAt, setScheduledStartAt] = useState<Date | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
@@ -53,12 +52,9 @@ export default function CreateEventPage() {
 
     const supabase = createClient()
     const eventCode = generateEventCode(eventLocations[0])
-    const scheduledStartIso = scheduledStartAt ? scheduledStartAt.toISOString() : null
     const now = new Date()
-    const isUpcoming = scheduledStartAt && scheduledStartAt.getTime() > now.getTime()
-    const status = isUpcoming ? 'upcoming' : 'live'
-    const startedAt = isUpcoming ? null : now.toISOString()
-    const endsAt = isUpcoming ? null : new Date(now.getTime() + 15 * 60 * 60 * 1000).toISOString()
+    const startedAt = now.toISOString()
+    const endsAt = new Date(now.getTime() + 15 * 60 * 60 * 1000).toISOString()
 
     const { data, error: dbError } = await supabase
       .from('events')
@@ -68,8 +64,8 @@ export default function CreateEventPage() {
         location: eventLocations[0],
         locations: eventLocations,
         duration_hours: 15,
-        scheduled_start_at: scheduledStartIso,
-        status,
+        scheduled_start_at: null,
+        status: 'live',
         starts_at: startedAt,
         ends_at: endsAt,
         host_id: user.id,
@@ -91,11 +87,6 @@ export default function CreateEventPage() {
         <Spinner className="w-8 h-8" />
       </main>
     )
-  }
-
-  function toDateTimeLocal(date: Date) {
-    const pad = (value: number) => String(value).padStart(2, '0')
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
   }
 
   return (
@@ -191,27 +182,6 @@ export default function CreateEventPage() {
                 </p>
               </div>
 
-              {/* Scheduled Start Time */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  Scheduled start time
-                </Label>
-                <Input
-                  type="datetime-local"
-                  value={scheduledStartAt ? toDateTimeLocal(scheduledStartAt) : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      // Fix native datetime-local string to Javascript Date object conversion
-                      setScheduledStartAt(new Date(e.target.value))
-                    } else {
-                      setScheduledStartAt(null)
-                    }
-                  }}
-                  className="bg-input"
-                />
-              </div>
-
               {/* Duration - Fixed at 15 hours */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -222,7 +192,7 @@ export default function CreateEventPage() {
                   <span className="text-sm font-medium">15 hours (fixed)</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Events last exactly 15 hours. The timer starts when you start the event.
+                  Events start immediately and last exactly 15 hours.
                 </p>
               </div>
 

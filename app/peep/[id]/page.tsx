@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Copy, Share2, Video } from 'lucide-react'
+import { PeepVideoPlayer } from '@/components/peep/peep-video-player'
 
 type PeepData = {
   videoUrl: string
@@ -111,22 +112,7 @@ export default function PeepPage({ params }: PeepPageProps) {
         <section className="flex w-full flex-1 flex-col items-center justify-center gap-4 py-4">
           {peep ? (
             <>
-              <div className="relative aspect-square h-[min(92vw,58dvh,640px)] w-[min(92vw,58dvh,640px)] shrink-0 overflow-hidden rounded-full bg-black shadow-[0_0_60px_rgba(0,168,132,0.12)]">
-                <video
-                  key={peep.videoUrl}
-                  src={peep.videoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  controls
-                  className="absolute inset-0 h-full w-full rounded-full object-cover"
-                />
-                <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
-                  <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0, 168, 132, 0.35)" strokeWidth="1.5" />
-                  <circle cx="50" cy="50" r="48" fill="none" stroke="#00a884" strokeWidth="1.5" />
-                </svg>
-              </div>
+              <PeepVideoPlayer videoUrl={peep.videoUrl} />
               <div className="space-y-1 text-center">
                 <p className="text-sm text-zinc-400">
                   Recorded {new Date(peep.createdAt).toLocaleString()}

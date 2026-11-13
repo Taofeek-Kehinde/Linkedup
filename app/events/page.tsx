@@ -111,8 +111,8 @@ export default function EventsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {liveEvents.map((event) => {
               const eventLocations = event.locations?.length
-                ? event.locations.join(', ')
-                : event.location || 'Location coming soon'
+                ? event.locations
+                : [event.location || 'Location coming soon']
 
               return (
                 <Card key={event.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
@@ -130,10 +130,14 @@ export default function EventsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                      <span className="line-clamp-2">{eventLocations}</span>
-                    </p>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      {eventLocations.map((location, index) => (
+                        <p key={`${location}-${index}`} className="flex items-start gap-2">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span>{location}</span>
+                        </p>
+                      ))}
+                    </div>
                     <Button
                       className="w-full"
                       onClick={() => router.push(`/join?code=${encodeURIComponent(event.event_code)}`)}

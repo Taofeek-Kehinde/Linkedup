@@ -511,7 +511,19 @@ export default function EventDetailsPage({ params }: { params: Promise<{ id: str
               ) : (
                 <>
                   <div className="flex justify-between"><span className="text-white/50 flex gap-2"><Users className="h-4 w-4"/> Participants</span><span className="text-white font-semibold">{users.length}</span></div>
-                  {event.locations && event.locations.length > 0 && <div className="flex justify-between"><span className="text-white/50 flex gap-2"><MapPin className="h-4 w-4"/> Locations</span><span className="text-white text-sm">{event.locations.join(', ')}</span></div>}
+                  {event.locations && event.locations.length > 0 && (
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex shrink-0 gap-2 text-white/50"><MapPin className="h-4 w-4"/> Locations</span>
+                      <div className="space-y-2 text-right">
+                        {event.locations.map((location, index) => (
+                          <div key={`${location}-${index}`} className="flex items-start justify-end gap-1 text-white text-sm">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/50" />
+                            <span>{location}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {event.scheduled_start_at && <div className="flex justify-between"><span className="text-white/50 flex gap-2"><CalendarDays className="h-4 w-4"/> Starts</span><span className="text-white text-sm">{new Date(event.scheduled_start_at).toLocaleString()}</span></div>}
                   <div className="flex justify-between"><span className="text-white/50 flex gap-2"><Clock className="h-4 w-4"/> Duration</span><span className="text-white">{event.duration_hours} hours</span></div>
                 </>

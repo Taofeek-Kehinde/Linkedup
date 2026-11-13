@@ -2,10 +2,30 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
+import { Camera, Link2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import styles from "./mydashbaord.module.css";
 
-const smileImages = ["one.jpg", "two.jpg", "three.jpg", "four.jpg", "five.jpg"];
+const smileImages = [
+  "one.jpg",
+  "two.jpg",
+  "three.jpg",
+  "four.jpg",
+  "five.jpg",
+  "six.jpg",
+  "seven.jpg",
+  "eight.jpg",
+  "nine.jpg",
+  "ten.jpg",
+];
 
 type ActiveEvent = {
   id: string;
@@ -24,8 +44,38 @@ export default function MyDashboard() {
   const [joinLink, setJoinLink] = useState<string>("");
   const [copyLabel, setCopyLabel] = useState<string>("Copy link");
   const [pullupUrl, setPullupUrl] = useState<string>("");
+  const [activeSmileIndex, setActiveSmileIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState("--:--:--");
+  const [isPeepSheetOpen, setIsPeepSheetOpen] = useState(false);
+  const [isCreatingPeepRequest, setIsCreatingPeepRequest] = useState(false);
+  const [peepRequestError, setPeepRequestError] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(
+        new Intl.DateTimeFormat(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date())
+      );
+    };
+
+    updateTime();
+    const intervalId = window.setInterval(updateTime, 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveSmileIndex((index) => (index + 1) % smileImages.length);
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -106,6 +156,22 @@ export default function MyDashboard() {
     window.location.href = "/admin/create";
   }, []);
 
+  const handleRequestPeep = useCallback(async () => {
+    setIsCreatingPeepRequest(true);
+    setPeepRequestError(null);
+    try {
+      const response = await fetch("/api/peep-requests", { method: "POST" });
+      const result: { id?: string; error?: string } = await response.json();
+      if (!response.ok || !result.id) {
+        throw new Error(result.error || "Could not create a Peep request link.");
+      }
+      window.location.href = `/peep/request/${result.id}`;
+    } catch (requestError) {
+      setPeepRequestError(requestError instanceof Error ? requestError.message : "Could not create a Peep request link.");
+      setIsCreatingPeepRequest(false);
+    }
+  }, []);
+
   const handleClockClick = useCallback(() => {
     if (pullupUrl) window.location.assign(pullupUrl);
   }, [pullupUrl]);
@@ -168,7 +234,10 @@ export default function MyDashboard() {
         {/* Center label */}
         <button
           className={styles.timerOuter}
-          onClick={() => { window.location.href = "/peep/create"; }}
+          onClick={() => {
+            setPeepRequestError(null);
+            setIsPeepSheetOpen(true);
+          }}
           type="button"
           aria-label="Create a Peep"
           title="Record a 3-second Peep"
@@ -182,8 +251,12 @@ export default function MyDashboard() {
                 alt=""
                 fill
                 loading="eager"
+                unoptimized
                 sizes="128px"
-                style={{ animationDelay: `${-index * 3}s` }}
+                style={{
+                  opacity: index === activeSmileIndex ? 1 : 0,
+                  transition: "opacity 300ms ease-in-out",
+                }}
                 className={styles.timerImage}
               />
             ))}
@@ -197,7 +270,7 @@ export default function MyDashboard() {
         {/* Description */}
         <div className={styles.descriptionWrap}>
           <div className={styles.descriptionTrack}>
-            <div className={styles.description}>REAL FACES at the MOMENT</div>
+            <div className={styles.description}>REAL FACES in the MOMENT</div>
             <div className={styles.description}>... No Filters. No Fakes. No History</div>
           </div>
           <span className={styles.descriptionDivider} />
@@ -233,8 +306,55 @@ export default function MyDashboard() {
         title={pullupUrl ? "Open configured link" : "Set a redirect URL in the admin page"}
       >
         <span className={styles.clockIndicator} aria-hidden="true" />
-        <span className={styles.clockValue}>00:00:00</span>
+        <span className={styles.clockValue} aria-label={`Current local time ${currentTime}`}>{currentTime}</span>
       </button>
+
+      <Sheet open={isPeepSheetOpen} onOpenChange={setIsPeepSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-3xl border-white/10 bg-zinc-950 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-white sm:px-8"
+        >
+          <SheetHeader className="px-0 text-left">
+            <SheetTitle className="text-xl text-white">Choose your Peep</SheetTitle>
+            <SheetDescription className="text-zinc-400">
+              Record one yourself or invite someone to send you a 3-second video.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <Button
+              className="h-auto min-h-20 justify-start rounded-2xl bg-gradient-to-r from-red-600 to-rose-500 px-5 py-4 text-left text-white shadow-lg shadow-red-950/30 hover:from-red-500 hover:to-rose-400"
+              onClick={() => {
+                setIsPeepSheetOpen(false);
+                window.location.href = "/peep/create";
+              }}
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15">
+                <Camera className="h-5 w-5" />
+              </span>
+              <span className="flex flex-col items-start gap-1">
+                <span className="font-semibold">TAKE a PEEP</span>
+                <span className="text-xs font-normal text-white/80">Record your own Peep</span>
+              </span>
+            </Button>
+            <Button
+              className="h-auto min-h-20 justify-start rounded-2xl border border-emerald-400/25 bg-gradient-to-r from-emerald-700 to-teal-600 px-5 py-4 text-left text-white shadow-lg shadow-emerald-950/30 hover:from-emerald-600 hover:to-teal-500"
+              onClick={handleRequestPeep}
+              disabled={isCreatingPeepRequest}
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15">
+                {isCreatingPeepRequest ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <Link2 className="h-5 w-5" />}
+              </span>
+              <span className="flex flex-col items-start gap-1">
+                <span>{isCreatingPeepRequest ? "Creating link..." : "REQUEST a PEEP"}</span>
+                <span className="text-xs font-normal text-white/80">Invite someone to record for you</span>
+              </span>
+            </Button>
+          </div>
+          {peepRequestError && (
+            <p className="mt-3 text-sm text-red-300" role="alert">{peepRequestError}</p>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Footer */}
       <div className={styles.footer}>
